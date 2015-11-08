@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="author" content="Kezz Bracey">
+    <meta name="description" content="">
+    <title>Postcss Compatibility</title>
+    <link rel="stylesheet" href="css/global.css" media="all">
+</head>
+<body>
+<a href="http://webdesign.tutsplus.com/tutorials/using-postcss-for-cross-browser-compatibility--cms-24567">the link of articles</a><br>
+<pre>
+Using PostCSS for Cross Browser Compatibility
+
+In the last tutorial we wrapped up our “Quick Start” section of this series, and we’re now ready to move onto using PostCSS to generate stylesheets, employing different kinds of plugins for various purposes.
+
+In this tutorial we’re going to use PostCSS to create a stylesheet designed for cross browser compatibility. We will:
+
+    Have vendor prefixes automatically added in
+    Add a series of fallbacks for Internet Explorer versions 8, 9 and 10
+    Add fallbacks for the not yet widely supported will-change property
+
+Let’s begin!
+Setup Your Project
+
+The first thing you’ll need to do is setup your project to use either Gulp or Grunt, depending on your preference. If you don’t already have a preference for one or the other I recommend using Gulp as you’ll need less code to achieve the same ends.
+
+You can read about how to setup Gulp or Grunt projects for PostCSS in the previous tutorials
+
+    PostCSS Quickstart Guide: Gulp Setup or
+    PostCSS Quickstart Guide: Grunt Setup
+
+respectively.
+
+If you don't want to manually setup your project from scratch though, you can download the source files attached to this tutorial, and extract either the provided Gulp or Grunt starter project into an empty project folder. 
+
+Then, with a terminal or command prompt pointed at the folder, run the command npm install.
+Install Plugins
+
+Now that you have your empty Gulp or Grunt + PostCSS project ready, we need to install the plugins you’ll be using in this tutorial.
+
+We’re going to be installing quite a few plugins, so instead of installing them one at a time as we did in the “Quickstart Guides” for Gulp and Grunt, we’ll install them all at once with a single command.
+
+Whether you’re using Gulp or Grunt, run the following command inside your project folder to install the plugins we’ll be using:
+1
+	
+npm install autoprefixer postcss-color-rgba-fallback postcss-opacity postcss-pseudoelements postcss-vmin pixrem postcss-will-change --save-dev
+
+Now the plugins are installed, let’s go ahead and load them into your project.
+Load Plugins via Gulp
+
+If you’re using Gulp, add these variables under the variables already in the file:
+1
+2
+3
+4
+5
+6
+7
+	
+var autoprefixer = require('autoprefixer');
+var color_rgba_fallback = require('postcss-color-rgba-fallback');
+var opacity = require('postcss-opacity');
+var pseudoelements = require('postcss-pseudoelements');
+var vmin = require('postcss-vmin');
+var pixrem = require('pixrem');
+var will_change = require('postcss-will-change');
+
+Now add each of those new variable names into your processors array:
+1
+2
+3
+4
+5
+6
+7
+8
+9
+	
+var processors = [
+    will_change,
+    autoprefixer,
+    color_rgba_fallback,
+    opacity,
+    pseudoelements,
+    vmin,
+    pixrem
+];
+
+Do a quick test that everything is working by running the command gulp css then checking that a new “style.css” file has appeared in your project's "dest" folder.
+Load Plugins via Grunt
+
+If you’re using Grunt, update the processors object, which is nested under the options object, to the following:
+1
+2
+3
+4
+5
+6
+7
+8
+9
+	
+processors: [
+  require('postcss-will-change')(),
+  require('autoprefixer')(),
+  require('postcss-color-rgba-fallback')(),
+  require('postcss-opacity')(),
+  require('postcss-pseudoelements')(),
+  require('postcss-vmin')(),
+  require('pixrem')()
+]
+
+Do a quick test compile by running the command grunt postcss then checking that your project’s “dest” folder now contains a new “style.css” file.
+
+You now have all the plugins installed that are required for this tutorial, and you’re ready to move onto seeing how to use them to enhance your stylesheets’ cross browser compatibility.
+Automatically Add Vendor Prefixing
+
+Some of the measures for cross browser compatibility we’ll be covering will only be necessary for specific use cases. Automated vendor prefixing, on the other hand, is something I would suggest should be done with every project, via the Autoprefixer plugin created by Andrey Sitnik.
+
+It can be difficult to keep tabs on which properties require which vendor prefixes at any given time, and by using Autoprefixer you don’t have to. Use Autoprefixer as part of every project and it will check your code against the data from CanIUse.com, then add vendor prefixes as necessary without you having to think about it.
+
+Let’s do a little test to see Autoprefixer in action. Add the following animation and flexbox code to your project’s “src/style.css” file:
+01
+02
+03
+04
+05
+06
+07
+08
+09
+10
+11
+12
+13
+	
+@keyframes animationExample {
+    from {
+        width: 0;
+    }
+    to {
+        width: 100%;
+    }
+}
+ 
+.animateThis {
+    animation: animationExample 2s;
+    display: flex;
+}
+
+Run gulp css or grunt postcss to compile your file, and your “dest/style.css” should now contain this vendor prefixed code:
+01
+02
+03
+04
+05
+06
+07
+08
+09
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+	
+@-webkit-keyframes animationExample {
+    from {
+        width: 0;
+    }
+    to {
+        width: 100%;
+    }
+}
+ 
+@keyframes animationExample {
+    from {
+        width: 0;
+    }
+    to {
+        width: 100%;
+    }
+}
+ 
+.animateThis {
+    -webkit-animation: animationExample 2s;
+            animation: animationExample 2s;
+    display: -webkit-box;
+    display: -webkit-flex;
+    display: -ms-flexbox;
+    display: flex;
+}
+
+As you can see, vendor prefixes have been automatically added in, as dictated by the data provided from CanIUse.com on animation and flexbox.
+Specifying Browser Support Levels
+
+Autoprefixer uses Browserlist to determine which browser versions it will add support for. Under default settings it will apply vendor prefixes as required for:
+
+    > 1%: browsers used by more than one percent of people globally
+    last 2 versions: the last two versions of every browser tracked by CanIUse.com
+    Firefox ESR: the latest Firefox version
+    Opera 12.1: Opera version 12.1
+
+The example we ran through above was compiled under Autoprefixer’s default settings. This meant support for IE10 and Safari 8 was included, so the -ms- and -webkit- prefixes they require for animation and flexbox were automatically inserted.
+
+However, IE11 and Safari 9 don’t require these prefixes, so if you were to set your browserlist configuration to support only IE11+ and Safari 9+ these prefixes would no longer be added.
+
+Try this out by passing a browsers setting through to Autoprefixer in your Gulpfile or Gruntfile like so:
+1
+2
+3
+4
+5
+	
+// In the Gulpfile 'processors' array:
+autoprefixer({browsers:'safari >= 9, ie >= 11'}),
+ 
+// In the Gruntfile 'processors' array:
+require('autoprefixer')({ browsers: ['safari >= 9, ie >= 11'] }),
+
+Now if you recompile your CSS you’ll see there is no difference between your original and compiled code. This is because, with no support requested for Safari 8 or IE10, no vendor prefixes have been added in to suit them.
+Related Links:
+
+    Autoprefixer: https://github.com/postcss/autoprefixer
+    Browserlist: https://github.com/ai/browserslist
+
+Add Fallback for “will-change” Property
+
+The will-change property is used to let a browser know ahead of time that certain elements of your design are going to be animated. This allows the browser to optimize the rendering process and prevent delays and flickers. However, at present this property is not supported by IE / Edge, Safari or Opera Mini.
+
+The postcss-will-change plugin, also created by Andrey Sitnik, adds a fallback that will help these browsers do a better job of rendering, even if not with the efficiency they could if they supported will-change. It does so by adding the backface-visibility property, which triggers the creation of a compositor layer that will be handled by the GPU.
+
+For example, add this code to your “src/style.css” file:
+1
+2
+3
+	
+.thisWillChange {
+    will-change: transform;
+}
+
+Compile your stylesheet and you should see the fallback appear in your “dest/style.css” file:
+1
+2
+3
+4
+	
+.thisWillChange {
+    backface-visibility: hidden;
+    will-change: transform;
+}
+
+Note: this plugin should be loaded before Autoprefixer in your Gulpfile/Gruntfile. This is to allow Autoprefixer to add vendor prefixes to the backface-visibility property, like so:
+1
+2
+3
+4
+5
+6
+	
+/* Fallback with vendor prefixes */
+.thisWillChange {
+    -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+    will-change: transform;
+}
+Related Links
+
+    postcss-will-change plugin: https://github.com/postcss/postcss-will-change
+    Everything You Need to Know About the CSS will-change Property
+    CanIUse info: http://caniuse.com/#feat=will-change
+
+Add Fallbacks for Old IE Issues
+
+Thanks to improved browser versions from Microsoft, and major groups leading the way in dropping support for old IE, we’re gradually edging closer to not having to constantly consider fallbacks and workarounds for problematic legacy browsers. Microsoft itself will be dropping support for IE8 in 2016. Bootstrap 4 alpha was recently released and it has also dropped support for IE8. Google stopped supporting IE8 in 2012 and dropped IE9 support in 2013.
+
+All that said, at the end of the day every project has to be assessed on a case by case basis, and if you’re targeting a demographic that has high usage rates of legacy browsers, you may have no choice but to do your best to support them. If that’s the case, the following plugins can help you make that process a little less painful.
+Create rgba() Color Fallbacks
+
+IE8 has no support for rgba() colors, so the postcss-color-rgba-fallback plugin by Guillaume Demesy adds a flat hexadecimal color as a fallback.
+
+For example, add this code to your “src/style.css” file:
+1
+2
+3
+	
+.rgbaFallback {
+    background: rgba(0,0,0,0.5);
+}
+
+Compile and you should see the hexcode fall back added to your “dest/style.css” file:
+1
+2
+3
+4
+	
+.rgbaFallback {
+    background: #000000;
+    background: rgba(0,0,0,0.5);
+}
+Related Links
+
+    postcss-color-rgba-fallback plugin: https://github.com/postcss/postcss-color-rgba-fallback
+    CanIUse info: http://caniuse.com/#feat=css3-colors
+
+Create opacity Fallbacks
+
+IE8 can’t handle the opacity property, so the postcss-opacity plugin by Vincent De Oliveira adds an IE specific filter to achieve the same effect.
+
+Add this code to your source stylesheet:
+1
+2
+3
+	
+.opacityFallback {
+    opacity: 0.5;
+}
+
+After compilation you should see the appropriate -ms-filter fallback added:
+1
+2
+3
+4
+	
+.opacityFallback {
+    opacity: 0.5;
+    -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=50)";
+}
+Related Links
+
+    postcss-opacity plugin: https://github.com/iamvdo/postcss-opacity
+    CanIUse info: http://caniuse.com/#feat=css-opacity
+
+Convert :: into : on Pseudo-elements
+
+It’s considered best practice when generating pseudo-elements such as .element::before to use a double colon notation ::. This is to help distinguish them from pseudo-classes such as .element:hover which should use a single colon notation :.
+
+However, IE8 doesn’t support the double colon notation :: to create pseudo-elements, it only supports a single colon :. By using the postcss-pseudoelements plugin by Sven Tschui you can code according to best practices, and have the notation changed automatically.
+
+Add the following double :: notation code:
+1
+2
+3
+	
+.pseudo-element::before {
+    content: '';
+}
+
+Compile your file and you should see it has been reduced to the single : notation:
+1
+2
+3
+	
+.pseudo-element:before {
+    content: '';
+}
+
+By coding to best practices and using this plugin, once IE8 is completely retired you can just reprocess your CSS without the plugin and have proper syntax in place.
+Related Links
+
+    postcss-pseudoelements plugin: https://github.com/axa-ch/postcss-pseudoelements
+    CanIUse info: http://caniuse.com/#feat=css-gencontent
+
+Add vm Fallback for vmin
+
+In IE9 the viewport relative unit vmin is not supported, but instead uses the equivalent unit vm. If you’re catering to IE9, the postcss-vmin plugin by Vincent De Oliveira will add vm units as a fallback.
+
+Add this code to your “src/style.css” file:
+1
+2
+3
+	
+.vmFallback {
+    width: 50vmin;
+}
+
+Recompile, and the resulting code should have the vm unit fallback added in:
+1
+2
+3
+4
+	
+.vmFallback {
+    width: 50vm;
+    width: 50vmin;
+}
+Related Links
+
+    postcss-vmin plugin: https://github.com/iamvdo/postcss-vmin
+    CanIUse info: http://caniuse.com/#feat=viewport-units
+
+Add px Fallback for rem Units
+
+IE8 doesn’t support rem units at all, and in both IE9 and IE10 they are unsupported in psuedo-elements and font shorthand declaration. With the node-pixrem plugin by Vincent De Oliveira and Rob Wierzbowski you can have px based fallbacks added automatically wherever you use rem units.
+
+Add this code to your source stylesheet:
+1
+2
+3
+4
+5
+6
+7
+8
+9
+	
+.remFallback {
+    height: 10rem;
+    font: 2rem Arial;
+}
+ 
+.remFallback::before {
+    content: '';
+    line-height: 1rem;
+}
+
+Recompile and you should see all the appropriate px fallbacks added:
+01
+02
+03
+04
+05
+06
+07
+08
+09
+10
+11
+12
+	
+.remFallback {
+    height: 160px;
+    height: 10rem;
+    font: 32px Arial;
+    font: 2rem Arial;
+}
+ 
+.remFallback:before {
+    content: '';
+    line-height: 16px;
+    line-height: 1rem;
+}
+Related Links
+
+    node-pixrem plugin: https://github.com/robwierzbowski/node-pixrem
+    CanIUse info: http://caniuse.com/#feat=rem
+
+Advertisement
+Let’s Recap
+
+To sum up what we’ve covered in the above:
+
+    Autoprefixer is an must-use tool for every project
+    Autoprefixer can be configured to add vendor prefixes based on whatever browsers you need to support
+    If using animation in your project, consider using the plugin postcss-will-change
+    If supporting IE8, consider using the plugins postcss-color-rgba-fallback, postcss-opacity, postcss-pseudoelements and postcss-vmin.
+    If supporting IE8, IE9, IE10 consider using the node-pixrem plugin
+
+In the Next Tutorial
+
+Coming up next in our PostCSS Deep Dive series is a tutorial on how to use plugins to minify and optimize your CSS. We’ll cover inlining @import files, combining media queries, stripping white space and several more methods to make your stylesheets as streamlined as possible. See you there!
+</pre>
+</body>
+</html>

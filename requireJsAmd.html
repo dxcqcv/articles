@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="author" content="Andrew Burgess">
+    <meta name="description" content="">
+    <title>requireJs AMD</title>
+    <link rel="stylesheet" href="css/global.css" media="all">
+</head>
+<body>
+<a href="http://code.tutsplus.com/tutorials/next-generation-javascript-with-amd-and-requirejs--net-21596?post_id=1161951817155488_1161951767155493#_=_">the link of articles</a><br>
+<pre>
+Next Generation JavaScript with AMD and RequireJS
+
+I don't know about you, but I'm always looking for better ways to organize my JavaScript. Recently (only a week or so ago), I've discovered what seems to be the best pattern yet. In this tutorial, I'll introduce you to AMD: Asynchronous Module Definition and RequireJS. Hang on tight; it'll be a wild ride!
+
+    This tutorial includes a screencast available to Tuts+ Premium members.
+
+The Problem
+
+If you've been writing client-side JavaScript for a while, you might have noticed a <sarcasm> small </sarcasm> problem with JavaScript. The only—or at least, the standard—way of getting multiple JavaScript files onto a page is to include multiple script tags:
+1
+2
+3
+	
+<script src="file1.js"></script> 
+<script src="file2.js"></script> 
+<script src="file3.js"></script>
+
+There are a couple of issues with this method.
+
+Firstly, it's just plain inconvenient. All the JavaScript in all the scripts is loaded into the global “namespace.” Of course, this may be misleading to beginners, who could easily—and excusable—think that identically-named variables in different files won't conflict. But more than that, it's a pain for experienced JavaScript developers with perhaps dozens of JavaScript files. Some files will depend on others, which may depend on others, etc. And you're on playground duty: you've got to make sure they all arrive in the right order, and that nobody clobbers anybody. This can be both tricky or time-consuming, depending on the project.
+
+Secondly—and more importantly—when a browser is downloading and executing JavaScript files, that's all it's doing; it's blocking the downloading of other content until that's done. This is why you've heard it recommended to put your <script> tags at the end of your <body>, instead of in your <head> as used to be the idea: that way, all your other content (HTML, CSS, images, etc.) will be visible to the user before the JavaScript is downloaded and executed. By using one of the many script loaders available, you'll be able optimize this process at much as possible. RequireJS is one of those loaders, and you'll get all the benefits of using it with AMD. For more on this, read the first chapter (and of course all the rest!) of High Performance JavaScript by Nicolas C. Zakas.
+Full Screencast
+
+The Solution
+
+There's a proposed solution to this, partly in the form of Asynchronous Module Definition (AMD). This solves the dependancy problem (some scripts depending on others), the global “namespace” problem (where all code is in the global “namespace” by default), and the blocking problem.
+
+The idea is this: what if we had a standard way to write a “chunk” of JavaScript functionality? A right way to organize a library, a framework, a set of helper functions, or script? We'll call these code-sets modules. Then, what if there was a standard way to load our modules onto a page? A better way than using script tags?
+
+That's what I'm going to show you in this tutorial. Asynchronous Module Definition is a specification for defining JavaScript modules. I said above, though, that AMD is only part of the solution. That's because a module is useless if we can't load it onto a page and use it. So, that's the other part: we need to require our modules (load them), and then use them. While this part isn't a specification like AMD, we'll see that that's okay.
+
+Like the title says, this tutorial is about the RequireJS library. But, as you're quickly finding out, it's about a lot more as well. Here are a few overarching points I want you to remember as you work your way through this tutorial:
+
+    AMD and requiring modules are two separate things: AMD is a specification with a strict implementation; requiring modules is not a standard at all, and has varying implementations.
+    RequireJS is just one of many libraries that implement the AMD spec and method of requiring modules. There's nothing that says a library must implement both.
+
+Seeing that AMD is a specification that won't change no matter what library you're using to load the modules, let's first look at how to create modules; we'll do this without referencing any libraries at all. Then, we'll look at how we can use RequireJS to use our modules.
+
+One last note: you may be familiar with the Module Pattern in JavaScript. The modules we're talking about today aren't that; they're rather similar, in that we can use closure to get a “private” scope, but they are a different pattern. Just FYI.
+Defining Modules with Asynchronous Module Definition
+
+Before we look at some actual syntax, let's discuss module creation in the abstract (yes, I know you're itching to code something, but the foundation is important). Firstly, each module you make will be in a separate file; besides simplifying your development process, you'll see that module loaders such as RequireJS use the file name as the module name. Sure, you can hard-code a name for your module inside the file, but this is a bad idea. That's because, after development, you'll want to use an optimization tool to put all your modules into one file for better downloading. The optimization tool will give your modules a name, deriving it from their file name. If you've added a name for the modules within the file, this could cause some confusion.
+
+So, a name. The next thing your modules will have is an optional list of other modules that it is dependent on. Besides making it very easy to break you code into manageable modules, this dependancy support does two things:
+
+    It does away with the issue of having to include (in the right order!) multiple scripts tags. Your loading library will load them in for you.
+    It allows your modules to interact without ever going near that global “namespace.”
+
+Then, there's the only required part of a module: the specification calls it the factory. It's either an regular old object, or a function that returns value. If your factory is a function—the more common case—you won't get a function when working with the module; you'll get the value that the function returns. That value can be any JavaScript value; you'll probably find you use an object most often, but you can return a Constructor function, a string, or anything you want.
+
+Ready for some code?
+Creating your First Module
+
+So, let's make a module. Specifically, let's make a module that will handle the attachment and detachment of DOM events. Start by creating our example project: just a folder with an index.html (which we'll come back to later) and a folder called “js.” Since you'll eventually gather a large collection of modules, it's important to keep them well organized: therefore, we'll have a “dom” folder inside “js.” In “dom,” create a file called events.js and open that in your text editor of choice.
+
+The AMD specification defines a single function called define. As you might guess from our discussion above, it takes three parameters: a name (optional), an array of dependancies (optional), and a factory. We don't have any dependencies here, and there's really no prep work that we need to do, so our factory can just be an object:
+01
+02
+03
+04
+05
+06
+07
+08
+09
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+	
+define({ 
+    addEvent: function (el, evt, fn) { 
+        if (el.addEventListener) { 
+            this.addEvent = function (el, evt, fn) { 
+                el.addEventListener(evt, fn, false); 
+                return el; 
+            }; 
+        } else if (el.attachEvent) { 
+            this.addEvent = function (el, evt, fn) { 
+                el.attachEvent("on" + evt, fn); 
+                return el; 
+            }; 
+        } else { 
+            this.addEvent = function (el, evt, fn) { 
+                el["on" + evt] = fn; 
+                return el; 
+            }; 
+        } 
+        return this.addEvent(el, evt, fn); 
+    }, 
+    removeEvent: function (el, evt, fn) { 
+        if (el.removeEventListener) { 
+            this.removeEvent = function (el, evt, fn) { 
+                el.removeEventListener(evt, fn, false); 
+                return el; 
+            }; 
+        } else if (el.detachEvent) { 
+            this.removeEvent = function (el, evt, fn) { 
+                el.removeEvent("on" + evt, fn); 
+                return el; 
+            }; 
+        } else { 
+            this.removeEvent = function (el, evt, fn) { 
+                el["on" + evt] = fn; 
+                return el; 
+            }; 
+        } 
+        return this.removeEvent(el, evt, fn); 
+    } 
+});
+
+Couldn't be easier. If you've created event-handling functions before, you know exactly what we're doing: Depending on the browser's DOM events capabilities, we're re-defining the addEvent or removeEvent the first time it is run.
+
+Now, you might be thinking, “Why not just assign this object to the variable event?” That's how you might do it if you weren't using AMD, but then you'd have to remember to import the script. But let's now use the module that we've just created.
+
+Let's create a file named main.js in the “js” folder; if this were a large project, this would be where all the action starts. Now, it's important to notice that what we're about to do isn't part of the AMD spec. This is part of RequireJS, and it isn't a specified API. With that said, let's see how it works!
+
+So, open up that main.js file. Let's start with this:
+1
+2
+3
+	
+require(["dom/events"], function (event) { 
+  
+});
+
+What's this doing? We're calling the require function, which is part of RequireJS. It takes two parameters: an array of dependancies, and a callback function where the action happens. You might be thinking that it looks pretty similar to how the define function works. Well, it does, but don't trip where I did and think that they're more closely related than they really are. Other JavaScript loaders that work with AMD modules might do this a bit differently. That's because define is a specification and require is not; have I mentioned that yet?
+
+As you can see, each dependancy is a string in the dependancies array. Notice how we've pointed to your events module: “dom/events.” That's the name of our module. remember, it's derived from the path to our module file. You could think of “dom/” as a namespace for all modules relating to the DOM.
+
+So, let's make a simple event:
+1
+2
+3
+4
+5
+6
+	
+require(["dom/events"], function (events) { 
+    var elem = document.getElementById("target"); 
+    events.addEvent(elem, "click", function () { 
+        alert("clicked"); 
+    }); 
+});
+
+We have to put something in our index.html file for all this to work. How's this look?
+01
+02
+03
+04
+05
+06
+07
+08
+09
+10
+	
+<!DOCTYPE html> 
+<html> 
+    <head> 
+        <title>Learn Require.js</title> 
+        <script data-main="js/main" src="js/require.js"></script> 
+    </head> 
+    <body> 
+        <h1 id="target">Learning Require.js</h1> 
+    </body> 
+</html>
+
+This would, of course, be a good time to download RequireJS (just download the plain require.js, none of the other special get-ups for now). Put it in your “js” folder.
+
+You might be confused when you see that our only script tag loads require.js. What about loading main.js to get the app (hey! it's small, but it's an app) rolling? Well, see that HTML5 data-* attribute on the script tag? That tells RequireJS what to load after it has finished loading. So, we're telling it to load js/main.js. In the case of RequireJS, this also sets the baseUrl option to the same folder that the script we're loading is in. That's our “js” folder. This is relevant to how we require our modules inside main.js: since, when main.js loads, there are no modules currently available called “dom/events”, it assumes that's a path (as well as a name) and looks for it inside the baseUrl: js/dom/events.js.
+
+Well, that should be all you need to do: open up that index.html file, and click the heading:
+
+Great! That worked!
+Creating a More Complex Module
+
+Now that we have a working module, let's take that module to the next step. Right now, our “dom/events” module is just an object literal, because that's all it needs to be. But I have an idea that will make it more useful to the devs who use it: wouldn't it be nice to have some sugar methods named after common events: “click”, “mouseover”, “mouseout”, “keypress”, etc. Sure, we could code each of these separately, but let's be smart and add them dynamically. This will require that our module is more than just an object literal. Change events.js so that it looks like this:
+1
+2
+3
+4
+5
+6
+7
+	
+define(function () { 
+    var eventObject = { /* the object we had previously */ }; 
+  
+    // we&#39;ll add our sugar methods dynamically in here. 
+  
+    return eventObject; 
+});
+
+We're going to create an array with all the names of the methods we want to add; since these names coincide with the names of the DOM events, our job is twice as easy: loop over the array and add each sugar method.
+
+Loop over the array … (please stroke your chin here). If all the browsers we want to support were modern browsers, we could use Array.prototype.forEach for easy iteration. But IE 6 - 8 don't support that. Sure, we could just use a for-loop, but eventually those old browsers will die, so we could prepare for that now. Let's make an array utilities module that will do the same thing Array.prototype.forEach will do. If forEach is available, we'll use that, otherwise, we'll use a version of the implementation shown in the Mozilla docs.
+
+So, create a “utils” folder in our “js” folder, and open a file named array.js:
+01
+02
+03
+04
+05
+06
+07
+08
+09
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+	
+define(function () { 
+  
+    var nativeForEach = function (list, callback, thisArg) { 
+        [].forEach.call(list, callback, thisArg); 
+    },  
+    customForEach = function (list, callback, thisArg) { 
+        var T, k = 0, O, len, kValue; 
+  
+        if ( list == null ) { 
+            throw new TypeError( " this is null or not defined" ); 
+        } 
+  
+        O = Object(list); 
+        len = O.length >>> 0; 
+  
+        if ( {}.toString.call(callback) != "[object Function]" ) { 
+            throw new TypeError( callback + " is not a function" ); 
+        } 
+  
+        if ( thisArg ) { 
+            T = thisArg; 
+        } 
+  
+        while( k < len ) { 
+            if ( k in O ) { 
+                kValue = O[k]; 
+                callback.call(T, kValue, k, O); 
+            } 
+            k++; 
+        } 
+    }; 
+  
+    return { 
+        forEach: (function () { 
+            if ({}.toString.call([].forEach) === "[object Function]") { 
+                return nativeForEach; 
+            } else { 
+                return customForEach; 
+            } 
+        }()) 
+    }; 
+});
+
+Again, we have a module with no hard-coded name and no dependancies. In our factory function, we create two functions: nativeForEach, which just shuttles our arguments to the native Array.prototype.forEach; and customForEach, which uses a version of the MDN implementation. Then, we return an object with a forEach method. This is a self-invoking anonymous function that figures out if Array.prototype.forEach exists as a function, and if it does, it uses that. Otherwise, it uses our method.
+
+So, now that we have our array utilities module, let's use it in our DOM events module. That means that the array utilities will be a dependancy of our dom events module. We'll have to add it in:
+1
+2
+3
+4
+5
+6
+7
+	
+define(["utils/array"], function (array) { 
+    var eventObject = { /* the object we had previously */ }; 
+  
+    // we&#39;ll add our sugar methods dynamically in here. 
+  
+    return eventObject; 
+});
+
+Notice that, even though this is within the “dom” folder, the utils/array module is still located with the baseUrl that was determined earlier. Now, our dom/events module won't be available in our main.js until it has loaded utils/array. Again, no need for additional script tags, and no worrying about loading order.
+
+So? Let's use our array utilities, already!
+01
+02
+03
+04
+05
+06
+07
+08
+09
+10
+11
+	
+define(["utils/array"], function (array) { 
+    var eventObject = { /* the object we had previously */ }; 
+  
+    array.forEach(["click", "mouseover","mouseout", "keypress"], function(evt) { 
+        eventObject[evt] = function (el, fn) { 
+            this.addEvent(el, evt, fn); 
+        }; 
+    }); 
+      
+    return eventObject; 
+});
+
+It's that simple. And of course, you can include other events in that array, and they'll get added too. Now, we could go back to our main.js file and use our new methods:
+1
+2
+3
+	
+event.click(elem, function () { 
+    alert("clicked"); 
+});
+
+I think you've got the hang of creating your own modules with Asynchronous Module Definition. And you'll be pleased to know, the spec is really that simple: you know almost all there is to know about AMD, and certainly you know enough to start using it now.
+
+However, there's a lot more that RequireJS can do, and since it's the main star of this show, let's give it the stage-time it deserves.
+Loading other JavaScript files
+
+You're probably thinking, “Well, this is all pretty shiny, but I haven't ever seen one of these modules before in my life; are you expecting me to give up all the libraries and frameworks I know and love to use this system?”
+
+Not at all—because we can load regular old JavaScript files as dependancies in both define and require. You treat them just as you would a module: give their file path (without file extension) relative to the baseUrl, and you're in business. Of course, this doesn't prevent these scripts from using the global namespace if that's what they do, and you won't get anything passed to your factory as a parameter. It's just an easier way to make sure the right scripts get loaded before you need to use them.
+
+For example, our utils/array.js file might not house an AMD module; it could just be a global object literal called arrayUtils that holds our utility methods. If that were the case, we would require it in the same way, but use it just like any other global variable; nothing get's passed to the function as a parameter:
+1
+2
+3
+4
+5
+6
+7
+	
+require(["utils/array"], function () { 
+    var arr = [1,2,3]; 
+  
+    arrayUtils.forEach(arr, function (item) { 
+        // action here 
+    }); 
+});
+
+It's that easy!
+Configuring RequireJS
+
+RequireJS has quite a few options for configuration, so we'll set you up with those next.
+
+First off, you'll want to know that you configure RequireJS simply by passing an object of options to require.config(). But what options can you set? Here are some of the most useful ones:
+baseUrl
+
+We've already talked about how this option is set when you use the data-main attribute when loading require.js; if data-main is my_scripts/start_here.js, then the baseUrl will be my_scripts. However, you can overwrite that within the script file by setting baseUrl: "my_path". This is also a good idea if you prefer to load your script from it's own script tag (because doing so doesn't set baseUrl):
+1
+2
+	
+<script src="js/require.js"></script> 
+<script src="js/main.js"></script>
+
+If you do this, you should include this at the top of the main.js:
+1
+	
+require.config({ baseUrl: "./js" });
+
+And everything will work right.
+paths
+
+Sometimes you won't want to put the full module path in your dependancy arrays. For example, you might keep one module in my_libs/utils/v1/2/0/functional.js, and that'd just be ugly. So, you can use the paths option to “alias” your scripts.
+1
+2
+3
+4
+5
+	
+require.config({ 
+    paths : { 
+        "utils/functional" : "my_libs/utils/v1/2/0/functional"
+    } 
+});
+
+Notice that the real path should be written as if it was in a dependancies array: so, if they don't start with a protocol (like http://) or /, they'll be found relative to the baseUrl. But, just like a deps array, you can use external scripts we well:
+1
+2
+3
+4
+5
+6
+	
+require.config({ 
+    paths : { 
+        "utils/functional" : "my_libs/utils/v1/2/0/functional", 
+        jQuery: "https://ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min"
+    } 
+});
+
+Now, we can use use “jQuery” in our deps array!
+
+Notice that, even though this is a full path, I've taken the “.js” off the end; the file extension is required when you put the URL right into the dependencies array, but when you put it here, in the paths configuration option, it must not be there. Don't forget about this small annoyance, and you'll be fine.
+waitSeconds
+
+How many seconds should RequireJS wait before loading a script? The default is 7, but you can change it if you'd like.
+Others
+
+RequireJS is pretty flexible, so these are several other properties you won't use most of the time. However, you can check them out in the docs.
+RequireJS Plugins
+
+Yes, RequireJS has a plugin architecture, which makes it even more useful. Plugins in RequireJS are all related to loading files, as you'll see. We'll just look at one plugin here: the text plugin. But there are others, if you're intersted.
+
+The text plugin allows you to load files that aren't JavaScript files (but are text files, i.e., no images); this will probably be HTML or CSS. I'm sure you can think of places where this would come in handy: no more building huge chunks of the DOM in JavaScript; just require the HTML file. Also, this is great for using templating systems like Mustache.js or Underscore.js: instead of putting the template in <script type=”text/template>, or right inside your JavaScript, just put it in a separate file and use the text plugin. Just download the text plugin, put it in the same folder as your main JavaScript file. Now, let's use it.
+
+Let's try using it with an Underscore.js template. Here's what I'll put in my main.js:
+01
+02
+03
+04
+05
+06
+07
+08
+09
+10
+11
+12
+	
+require(["text!templates/list.html", "libs/underscore"], function (listTpl) { 
+    // Underscore is loaded globally. 
+    var context = { 
+        people : { 
+            "Fredrick" : "Back-end Developer", 
+            "Victoria" : "Front-end Developer", 
+            "Hamilton" : "Designer", 
+            "Georgea"  : "Content Strategist"
+        } 
+    }; 
+    document.body.innerHTML = _.template(listTpl, context); 
+});
+
+Notice how we require our template file: we prefix it with text! so that RequireJS knows to use the text plugin to load this resource. We do have a file extension on there; that's required. Whatever is in your text files will be loaded as a string. What's in our templates/list.html file?
+1
+2
+3
+4
+5
+	
+<ul> 
+    <% _.each(people, function (job, name) { %> 
+        <li><strong><%= name %></strong>: <%= job %></li> 
+    <% }); %> 
+</ul>
+
+In this example, we're just passing that string to _.template(), along with a context object. And we got the output we'd expect:
+
+Other Plugins
+
+There are other plugins for RequireJS: James Burke, the author of RequireJS, has also written plugins that load scripts in a specific order, that load CoffeeScripts files, and that load internationalization bundles. You can check them out, if you're interested, on the Download Page.
+
+Writing you own plugins is possible, but it's a pretty advanced thing to do. I'll point you to the Plugin-writing docs which will give you everything you need to know.
+Advertisement
+The Optimization Tool
+
+Of course, using AMD modules and RequireJS makes development a lot easier. However, now you've got a backpack full of JavaScript files that your page is loading. Sure, there's only one script tag, but those other scripts are being loaded as separate files, which all adds up. So, before launching a site, you'll want to use the RequireJS optimization tool. This script can perform two tasks; primarily, it will combine the appropriate script files and minify them. It can also optimize your CSS by removing comments and inlining @imports (and, optionally, minifying).
+
+The RequireJS optimization tool is written in JavaScript, so you'll need either Node.js or Java & Rhino to get it working. Trust me, using Java & Rhino is an uber-ugly solution. Stick with Node, if you can; there are instruction for installing it on any platform all over the web. I'll only be showing you the Node way of doing this, because I'd rather slowly stab myself repeatedly than use Java & Rhino (please recognize the hyperbole).
+
+You can read on the website about how to optimize a single file at a time. But we're going for the big stuff: let's look at how to optimize a whole project. Of course, you'll want to do more than just a RequireJS optimization when preparing a project for launch, so you might run this as part of a build script (Nettuts+ has had several tuts on build scripts recently; check those out if you're not familiar with them). To start, go download the r.js file. It doesn't really matter where you put this file, but you'll need to know the path to it. The RequireJS site recommends putting it in the same directory your projects are in, so why don't you do that?
+
+We're going to test this with the sample project you got in this download; it's just a combination of the example snippets we've seen so far, all working together. So, let's create a build profile for our project. This is just a JSON file that's similar to our configuration object, but with build-specific properties. So, create a file in your “js” folder; the RequireJS documentation usually calls the file app.build.js, so we'll do the same. Start with this shell:
+1
+2
+3
+	
+({ 
+  
+})
+
+And let's see what properties we'll give it:
+
+    appDir : This is the root directory of your project. I'll note here that all the paths inside your build profile are relative to the file itself (so, if you move the file, you have to change the paths). Since we're putting the file inside our “js” directory, here's what we have in the file:
+    1
+    	
+    appDir: "../"
+
+    baseURL: This baseUrl is exactly the same as the baseUrl that is set when RequireJS runs in the browser. Of course, since your JavaScript code isn't run when using the optimization tool, the tool doesn't know what the base URL is. This base URL property is relative to the appDir property (heads up: I temporarily forget this in the screencast). So, we'll give it this:
+    1
+    	
+    baseUrl: "./js"
+
+    paths: Again, just like with require.config; since our JavaScript isn't running here, we have to set all our paths in our app.build.js file as well. In our case, we'll need
+    1
+    2
+    3
+    	
+    paths: { 
+        "underscore" : "lib/underscore-min"
+    }
+
+    modules: Here's an important one: the modules property is an array of all the modules we'd like to optimize. Basically, all the dependancies of this module will be included in the module's file, as well as any dependancies-of-dependancies (and so on). We'll do this:
+    1
+    2
+    3
+    	
+    modules: [ 
+        { name : "main" } 
+    ]
+
+    You're probably thinking two things here: first, main.js doesn't have a module in it; it's just a require call. Second, why have an object with only a name property? Why not just put in the names as strings? Well, even though main isn't a module, we can still optimize it this way; all the dependancies will be pulled into the same file. Also, there are other options we could include that are module-specific. Hence the object. So, what are these other properties? Well, here are two you might find handy: include: ["module/here", "maybe/another"] will include those modules and their dependancies in the same file. There's also exclude: ["module/here"]; this prevents a module that would normally be included from being added to the file. You might do this if the module will already be included in another built file, and will therefore be already loaded into the environment.
+
+    optimizeCss - The optimization tool will optimize any CSS files it finds. There are three options here: “none”, which will ignore the CSS files; “standard”, which will remove all comments, inlines all @imports, and remove line breaks; and “standard.keepLines”, which only removes comments and inlines @imports. “standard.keepLines” is the default, but I'm going to set this:
+    1
+    	
+    optimizeCss: "standard"
+
+    Don't fall into the same trap I did when learning this: the “ss” in CSS isn't capitalized.
+
+    dir: One more: the dir property tells the optimization tool where to put the built project. I'll use
+    1
+    	
+    dir: "../../sample-build"
+
+    This way, we'll have a “sample-build” folder right next to our “sample_project” folder. This new, optimized project will have everything in it: you'll be able to run it without a problem.
+
+So, here's our completed app.build.js:
+01
+02
+03
+04
+05
+06
+07
+08
+09
+10
+	
+({ 
+    appDir: "../", 
+    baseUrl: "js", 
+    dir: "../../sample-build", 
+    optimizeCSS: "standard", 
+    paths : { 
+        "underscore" : "libs/underscore-min"
+    }, 
+    modules: [ { name: "main" } ] 
+})
+
+There are other properties for doing more complex things. If you're interested, you can open that r.js file up, you can find the default set of properties:
+01
+02
+03
+04
+05
+06
+07
+08
+09
+10
+	
+buildBaseConfig = { 
+        appDir: ", 
+        pragmas: {}, 
+        paths: {}, 
+        optimize: "uglify", 
+        optimizeCss: "standard.keepLines", 
+        inlineText: true, 
+        isBuild: true, 
+        optimizeAllPluginResources: false
+    };
+
+Now, let's optimize this project! Get onto the terminal, cd into the “js” folder, and try this:
+1
+	
+node /path/to/r.js -o app.build.js
+
+You'll probably get output looking something like this:
+01
+02
+03
+04
+05
+06
+07
+08
+09
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+	
+Optimizing (standard) CSS file: /Users/andrew/Sites/sample-build/css/custom.css 
+Optimizing (standard) CSS file: /Users/andrew/Sites/sample-build/css/main.css 
+  
+Tracing dependencies for: main 
+Uglifying file: /Users/andrew/Sites/sample-build/js/app.build.js 
+Uglifying file: /Users/andrew/Sites/sample-build/js/dom/events.js 
+Uglifying file: /Users/andrew/Sites/sample-build/js/libs/underscore-min.js 
+Uglifying file: /Users/andrew/Sites/sample-build/js/main.js 
+Uglifying file: /Users/andrew/Sites/sample-build/js/require.js 
+Uglifying file: /Users/andrew/Sites/sample-build/js/text.js 
+Uglifying file: /Users/andrew/Sites/sample-build/js/utils/array.js 
+  
+js/main.js 
+---------------- 
+js/utils/array.js 
+js/dom/events.js 
+js/text.js 
+text!templates/list.html 
+js/libs/underscore-min.js 
+js/main.js
+
+The optimization tool found any CSS files in our project and optimized them, “uglified” (with the UglifyJS compressor) all our JavaScript files, and them compiled all the appropriate files into main.js.
+
+An acute reader like you (yes, you) might wonder how we can throw all our modules into one file, since they were identified by their file names. Well, if you dig around in our optimized main.js, you'll see this:
+1
+2
+	
+define("utils/array",[],function(){ /* .. */ }); 
+define("dom/events",["utils/array"],function(a){ /* .. */ });
+
+The optimization tool has given our modules hard-coded names. You'll notice there's also this:
+1
+2
+	
+define("underscore",function(){}) 
+define("main",function(){})
+
+Empty modules? Well, think about it for a second and you'll realize that these are the only two files that don't have real modules in them: one is a library that affects the global scope, and the other has our require call. RequireJS can work with these just fine, but be aware that the more non-AMD spec-compliant scripts you're using, the more of these empty modules you'll get. My guess is that the optimization tool includes these so that the loader doesn't go looking for files by these names when these files are required. Therefore, I wouldn't remove them.
+Conclusion and RequireJS Grab Bag
+
+There's a lot more I could show you with Asynchronous Module Definition and RequireJS. However, after reading through this, I'm pretty sure you've gotten a good grip of more than just the basics. If you're interested in learning more, here's a list of things you might want to check out:
+
+    Most JavaScript libraries have a ready event, or something similar, that fires when the DOM has been loaded and can be manipulated. RequireJS has one, too: you can pass require.ready a function, and it will execute that function when the time is right. You can also put that function in the config object, as the reader property.
+
+    You can use require statements inside require statements:
+    1
+    2
+    3
+    4
+    5
+    6
+    7
+    	
+    require(["some/module1", "some/modules2"], function () { 
+        // code here, optionally  
+        require(["some/module3", "some/module4"], function () { 
+            // code here 
+        }); 
+        // code here, optionally 
+    });
+
+    There's a pretty neat RequireJS internationalization plugin, for building multi-lingual apps.
+
+    There's a build of RequireJS that has jQuery built-in.
+
+    These slides from a talk on AMD by John Hann are pretty neat.
+
+    AlmondJS - A minimal AMD API implementation for use after optimized builds (written by James Burke, the developer behind RequireJS).
+
+</pre>
+</body>
+</html>

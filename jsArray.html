@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="author" content="Ben Nadel">
+    <meta name="description" content="">
+    <title>js Array method</title>
+    <link rel="stylesheet" href="css/global.css" media="all">
+</head>
+<body>
+<a href="http://blog.kevinchisholm.com/arrays-javascript/javascript-array-management-with-push-pop-shift-and-unshift/">the link of articles</a><br>
+<pre>
+javascript-array-management-with-push-pop-shift-and-unshift/
+
+When people first start to learn about arrays, they usually learn about the push() and pop() methods, if their particular language supports it; at least, I know I did. These two methods append elements to an array and remove an element from the an array respectively. Both of these methods work at the end of the array, where the index is largest. Javascript arrays have native support for these two methods. Javascript also has support for parallel methods that work on the beginning of the array, where the index is smallest. Unshift() and shift() are basically the same as push() and pop(), only, at the other end of the array.
+
+Despite working with Javascript for years, I only discovered the shift() method recently. And, as for the unshift() method, I totally only learned about that last night! As such, I figured I would pass this information on in case anyone else was in the dark like myself.
+Javascript Array: Push() Method
+
+The push() method can append one or more elements to the end of an array. This alters the array on which the method was called.
+
+    // Build an array of test data.
+    var data = [ "X" ];
+     
+    // Push data onto the array. Push() appends elements to the end
+    // of the given array. Note that it can take more than one
+    // argument, each of which is individually appended to the array.
+    // In the output, notice that when push() takes multiple arguments
+    // they are appended in a left-to-right order (mimicing their
+    // appearence in the arguments list).
+    data.push( "A" );
+    data.push( "B", "C" );
+     
+    // Output resultant array.
+    console.log( data );
+
+When we run the above code, we get the following console output:
+
+["X", "A", "B", "C"]
+
+The push() method can take multiple arguments, each of which will be appended to the array in the order it was passed-in (left-to-right); if you pass push() an array value, however, the array simply gets appended as a single element (a nested array). If you want to append an array to another array, take a look at the concat() method.
+Javascript Array: Pop() Method
+
+The pop() method pulls the last element off of the given array and returns it. This alters the array on which the method was called.
+
+    // Build an array of test data.
+    var data = [ "A", "B", "C" ];
+     
+    // Pop the element off of the end of the array.
+    console.log( data.pop() );
+    console.log( data );
+
+When we run the above code, we get the following console output:
+
+C
+["A", "B"]
+
+If you call pop() on an empty array, it returns an undefined value.
+Javascript Array: Unshift() Method
+
+The unshift() method is like the push() method, only it works at the beginning of the array. The unshift() method can prepend one or more elements to the beginning of an array. This alters the array on which the method was called.
+
+    // Build an array of test data.
+    var data = [ "X" ];
+     
+    // Unshift data onto the array. Unshift() prepends elements to
+    // the beginning of the given array. Note that it can take more
+    // than one argument. In the output, notice that when unshift()
+    // takes multiple arguments, they are prepended in a right-to-left
+    // order (mimicing their appearence in the arguments list).
+    data.unshift( "A" );
+    data.unshift( "B", "C" );
+     
+    // Output resultant array.
+    console.log( data );
+
+When we run the above code, we get the following console output:
+
+["B", "C", "A", "X"]
+
+Notice that when we pass the unshift() method multiple arguments, it prepends them in a right-to-left order such that the resultant array mimics the appearence of the unshift() arguments.
+Javascript Array: Shift() Method
+
+The shift() method is like the pop() method, only it works at the beginning of the array. The shift() method pulls the first element off of the given array and returns it. This alters the array on which the method was called.
+
+    // Build an array of test data.
+    var data = [ "A", "B", "C" ];
+     
+    // Shift the element off of the beginning of the array.
+    console.log( data.shift() );
+    console.log( data );
+
+When we run the above code, we get the following console output:
+
+A
+["B", "C"]
+
+If you call shift() on an empty array, it returns an undefined value.
+
+It used to be difficult for me to always keep it straight in my head which end of the array push() and pop() operated on (especially when reading unfamiliar code). But, now that I realize that unshift() and shift() are the same as push() and pop() only at the opposite end of the array, it certainly helps keep a certain mental order. I hope that this helps others at it has helped me.
+</pre>
+</body>
+</html>

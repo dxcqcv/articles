@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="author" content="Tom McFarlin">
+    <meta name="description" content="">
+    <title>jquery undefined</title>
+    <link rel="stylesheet" href="css/global.css" media="all">
+</head>
+<body>
+<a href="http://code.tutsplus.com/tutorials/why-is-jquery-undefined--cms-24406?utm_source=Tuts+&utm_medium=website&utm_campaign=relatedtutorials&utm_content=sidebar&WT.mc_id=Tuts+_website_relatedtutorials_sidebar">the link of articles</a><br>
+<pre>
+Why Is jQuery Undefined?
+
+For the advanced JavaScript developers (and the advanced jQuery developers) among our readership, this article is not going to be of much help. Instead, we're going to be focused on those who are just getting started with jQuery.
+
+Perhaps you've gone through several JavaScript tutorials, built several small sites or projects that incorporate JavaScript into the page (or the site) to some degree, and now you're ready to get started with a new framework or library.
+
+If you're reading this tutorial, then I assume you're interested in getting started with jQuery. Or perhaps you've already started with jQuery but you're encountering a couple of hurdles that are hindering your learning.
+
+As frustrating as it can be to learn something new, hit a roadblock and then have to repeat it a little bit further down the line, the silver lining is that the chances are that your problems have been solved by someone else.
+
+This isn't necessarily true for more complex applications, but when you're learning something new, you're not the first person to bounce along the learning curve. To that end, you're likely able to learn something from someone who has been there before. 
+
+And that's exactly what we're going to be covering in this tutorial. Specifically, we're going to be talking about the problem when you receive the error message:
+
+Uncaught ReferenceError: jQuery is undefined
+Understanding the Problem
+
+Before getting to the solution, let's review exactly what's happening. That is, in order to understand how we arrive at our solution, we need to understand the problem. Only then can we know how to solve what's being displayed in the console.
+Uncaught ReferenceError jQuery is not defined
+
+If you're familiar with JavaScript, then you know how confusing undefined can really be—that is, are we talking about the global object or a primitive value? That's beyond the scope of this post (no pun intended!), but even if you're not familiar with either definition, that doesn't mean you're not capable of diagnosing the problem.
+Set Up a Sandbox
+
+First, let's go ahead and set up a page that includes the basics of what we need in order to work with the jQuery library to reproduce the error that we see above.
+
+Start by creating the following HTML file and saving it somewhere on your local machine where you will be able to easily load it up in a web browser.
+
+<!doctype html>
+<html class="no-js" lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <title></title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <link rel="stylesheet" href="css/normalize.min.css">
+        <link rel="stylesheet" href="css/main.css">
+
+        <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+
+    </head>
+    <body>
+        <p>This is a basic HTML sandbox.</p>
+    </body>
+</html>
+
+Take notice that we're including some CSS in this file. It's completely optional, though if you'd like to follow along with this tutorial step-by-step, you can download an archive of all of this from the right-hand side of this post.
+
+Although the CSS is optional, the JavaScript is not. Note that we're including the jQuery library from a content-delivery network (or a CDN) so that we don't have to include it within our project's source files.
+
+Next, let's create a JavaScript source file that we can use in order to recreate the error above and to write some test code in order to solve the problem. We'll call it main.js.
+
+$(function() {
+
+});
+
+After that, include the source file in your HTML document such that the final file looks like this:
+
+<!doctype html>
+<html class="no-js" lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <title></title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <link rel="stylesheet" href="css/normalize.min.css">
+        <link rel="stylesheet" href="css/main.css">
+
+        <script src="js/main.js"></script>
+        <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+
+    </head>
+    <body>
+        <p>This is a basic HTML sandbox.</p>
+    </body>
+</html>
+
+Now you should be able to load up the page in your browser and see something almost exactly like the console image shared above.
+Verify Your JavaScript Is Loaded
+
+Before going any further, let's go ahead and make sure that the JavaScript file is loaded correctly. In order to do this, we'll set up a simple alert so that a message is displayed whenever the page is loaded in the browser.
+JavaScript Loaded
+
+To see this screen, make the following change to your JavaScript source file:
+
+$(function() {
+    alert( 'JavaScript Loaded!' );
+});
+
+Next, make sure that you re-order the JavaScript files from:
+
+<script src="js/main.js"></script>
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+
+To:
+
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+<script src="js/main.js"></script>
+
+We'll talk more about this in a little bit.
+
+At this point, refresh the page. Assuming all went well up to this point, then you should see the dialog as demonstrated in the image above. If that doesn't work, look over the code that's above (or download the files attached to this tutorial) and make sure you've got everything loaded correctly.
+Reproducing the Problem
+
+Now that we've got the sandbox set up so that we can begin exploring the problem in-depth, let's take a look at some potential problems that you may see when working with jQuery.
+1. jQuery Is Loaded After Your Code
+
+Whenever you opt to use jQuery in a project, this means that jQuery becomes a dependency for your work. And whenever you're working with dependencies, you generally need to make sure that they are loaded before your code so that your code can take advantage of it.
+
+If you notice in the first bit of code above, our JavaScript file is loaded before jQuery, so anything we'd like to do with jQuery can't actually be done. The reason that you're seeing the undefined error message that we discussed earlier is because jQuery is literally not defined within the context of your code.
+
+That is, your code has no idea that jQuery even exists because jQuery is loaded after your code. Luckily, this is a simple fix. Simply change the order in which the files are loaded—that is, place jQuery above your source file, and then try to execute the code once more.
+
+After the change, the full HTML should look like this:
+
+<!doctype html>
+<html class="no-js" lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <title></title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <link rel="stylesheet" href="css/normalize.min.css">
+        <link rel="stylesheet" href="css/main.css">
+
+        <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+        <script src="js/main.js"></script>
+
+    </head>
+    <body>
+        <p>This is a basic HTML sandbox.</p>
+    </body>
+</html>
+
+Your code should work and the console shouldn't be displaying any errors. This is likely the easiest problem to solve, but it's probably one of the least common errors to see, as it's generally assumed that jQuery will need to be loaded first.
+2. A Conflicting Plugin or File
+
+When working with jQuery, sometimes developers like to modify the $ function so that it doesn't conflict with something else that their source code uses.
+
+Specifically, jQuery is the name of the function within the jQuery source code. The library uses $ as a synonym or a shortcut since it's likely going to be used so often. It makes the code easier to type and easier to read.
+No Conflicts
+
+But it's not the only JavaScript code that uses that function and sometimes developers will need to use a different function or relinquish the $ to another bit of source code. In order to do that, they may end up using jQuery.noConflict(). 
+
+Straight from the API:
+
+    Many JavaScript libraries use $ as a function or variable name, just as jQuery does. In jQuery's case, $ is just an alias for jQuery, so all functionality is available without using $.  
+
+    If you need to use another JavaScript library alongside jQuery, return control of $ back to the other library with a call to $.noConflict(). Old references of $ are saved during jQuery initialization; noConflict() simply restores them.
+
+So somewhere in the code that you've included, there's a chance that another developer has made a call to this function. Thus, the $ function will not be accessible. It could potentially be calling a function other than jQuery itself, or it could be calling a function that is undefined. 
+
+In our case, we're interested in the latter. To address this, we can try a couple of solutions. First, we can try to reclaim access to the $ function by simply calling jQuery.noConflict() once again. Though this may solve the problem, it may also result in another problem that exists if another framework, library, or some other module is included with your code.
+
+To that end, I only recommend using this whenever you're absolutely sure you know what you're doing and that it won't affect other frameworks.
+Properly Scoping $
+
+But what if you don't know that it won't affect other frameworks. What then? In this case, you have the opportunity to initialize your code such that it will start with the basic jQuery function and then use the $ to scope the shortcut function into the context of your own code.
+
+Sound complicated? Don't worry. It's not bad. Let's edit our JavaScript source file to contain the following:
+
+(function( $ ) {
+    'use strict';
+
+    $(function() {
+        alert( 'JavaScript Loaded!' );
+    });
+
+})( jQuery );
+
+Alright, here's what's happening:
+
+    We're declaring an anonymous function that accepts a single argument (in our case, jQuery).
+    The function will be passed and referenced by $ and will be scoped only within the context of our anonymous function.
+
+This means that we're free to use the $ function however we see fit, without actually interfering with any other implementations of that particular function. In fact, for what it's worth, this is somewhat the de-facto way to set up your jQuery-based code. 
+
+Not everyone does it this way, but this is a very common, very safe way to handle it so that you're able to avoid the whole undefined error message.
+3. Are There More?
+
+Absolutely. But the challenge is figuring out how to cover them all. The truth is, I don't know if it's actually possible because, at some point, the complexity of web projects becomes so great that tracking down where the problem exists can be tough.
+
+Furthermore, changing jQuery to do what you want it to do might end up breaking something else (which is obviously never a good thing).
+
+Instead, it's best to stick with what we know is safe—like the anonymous function approach mentioned above—and not to abuse things like the noConflict() method. After all, part of good development is not only playing nice with other people's code, but writing code with which others may play nice, as well.
+Conclusion
+
+As outlined above, there are a number of different things that could trigger the jQuery is undefined message in your console. We've attempted to look at several of the most common problems in the examples above.
+
+That said, it's hard to be exhaustive because it's near impossible to cover all of the combinations and permutations you may have set up in your project. Perhaps you're using a conflicting library, maybe it's a poorly written plugin, or maybe there are just dependencies that are not properly ordered.
+
+Whatever the case may be, this hopefully helps explain what the problem is and some ways that you may move forward with diagnosing it. If your solution wasn't outlined here, then please feel free to leave it in the comments.
+
+Additionally, if you have any other questions, feel free to leave them in the comments below and I'll aim to answer them to the best of my ability.
+</pre>
+</body>
+</html>

@@ -1,0 +1,706 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="author" content="Kezz Bracey">
+    <meta name="description" content="">
+    <title>PostCSS sass</title>
+    <link rel="stylesheet" href="css/global.css" media="all">
+</head>
+<body>
+<a href="http://webdesign.tutsplus.com/tutorials/using-postcss-together-with-sass-stylus-or-less--cms-24591?utm_source=Tuts+&utm_medium=website&utm_campaign=relatedtutorials&utm_content=sidebar&WT.mc_id=Tuts+_website_relatedtutorials_sidebar">the link of articles</a><br>
+<pre>
+Using PostCSS Together with Sass, Stylus, or LESS
+
+If you’re interested in using PostCSS, but you still love your favorite preprocessor, don’t worry. You needn’t make a choice between the two–you can use them right alongside one another.
+
+There are several PostCSS plugins that compliment preprocessors very well, as they add functionality into your workflow that would otherwise be impossible, or at least more difficult, using only a preprocessor.
+
+We’ll touch on some of these complimentary plugins, then we’ll go through setup guides to show you how to use PostCSS side by side with Sass, Stylus or LESS.
+Why Use Both?
+
+Before we get into how you can use preprocessors together with PostCSS, we’ll talk a little bit about why you would want to. The short answer is: to gain access to PostCSS plugins whose functionality compliments preprocessors. To show you why these are worth having, we’ll go over a handful of plugins that work really well with preprocessors.
+
+Note: it may be possible to achieve similar end results by using mixins and functions in regular preprocessor code, but with each of the examples below the process is handled automatically. You write your CSS normally and the plugins take care of everything for you, with no functions to call, no mixins to include, or arguments to pass.
+autoprefixer
+
+There have been many a preprocessor mixin written to handle the insertion of vendor prefixes. For example, you might have used @include box-sizing(border-box); from the Compass library to output vendor prefixed box-sizing rules.
+
+The trouble with relying on mixins for vendor prefixes is:
+
+    You first have to know a property needs prefixes before you can decide to deploy a mixin for it.
+    You have to know the name of the associated mixin and how to use it.
+    You have to keep tabs on when vendor prefixes are no longer required for each property (I know I was prefixing box-sizing for way to long...)
+
+Autoprefixer eliminates these concerns by handling the process of vendor prefixing automatically. Autoprefixer scans your CSS, checks it against data from CanIUse.com, then adds the prefixes that are required.
+
+Read more about Autoprefixer at: https://github.com/postcss/autoprefixer
+rtlcss
+
+Generating both default and RTL (right to left) stylesheets from a single source is also something that has been done with preprocessors, however it typically requires using several mixins and/or interpolating variables into your code in several places. For example, rather than writing margin-left: 1rem; you might need to write margin-#{dir}: 1rem; or @include margin-left( 1rem );.
+
+With the rtlcss plugin by Mohammad Younes however, you don’t need to use mixins or variable interpolation, you just write your stylesheet as you normally would and the plugin will find all instances or “right” or “left” and swap them around. So margin-left: 1rem; automatically becomes margin-right: 1rem; without you having to write any special code to make it happen.
+
+Read more about rtlcss at: https://github.com/MohammadYounes/rtlcss
+postcss-colorblind
+
+With the postcss-colorblind plugin by Brian Holt you can automatically generate different versions of your stylesheet that give you first-hand experience of what your design would look like to a person with color blindness. It can simulate eight different types of colorblindness, helping you get a really solid grasp on just how accessible your color schemes are.
+
+This is an example of functionality that you really do have to go to PostCSS to find, as it would be very difficult for preprocessors to achieve.
+
+Read more about postcss-colorblind at: https://github.com/btholt/postcss-colorblind
+postcss-svgo
+
+The postcss-svgo plugin by Ben Briggs can give you hands free optimization of inline SVG code. For example this:
+1
+	
+background: url('data:image/svg+xml;utf-8,<?xml version="1.0" encoding="utf-8"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve"><circle cx="50" cy="50" r="40" fill="yellow" /></svg>');
+
+Can be boiled down to this, less than half the code:
+1
+	
+background: url('data:image/svg+xml;utf-8,<svg xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="40" fill="#ff0"/></svg>');
+
+Read more about postcss-svgo at: https://github.com/ben-eb/postcss-svgo
+cssnano
+
+While preprocessors can strip whitespace and comments, the cssnano pack by Ben Briggs can perform all kinds of optimizations above and beyond these two steps. We cover cssnano in detail in the tutorial For Minification and Optimization.
+
+Read more about cssnano at: https://github.com/ben-eb/cssnano
+postcss-font-magician
+
+The postcss-font-magician plugin by Jonathan Neal makes adding custom fonts as easy as using regular fonts. You don’t need to use any mixins, just add a font-family rule as you normally would:
+1
+2
+3
+	
+body {
+   font-family: "Alice";
+}
+
+...and the plugin will handle full @font-face generation for you:
+01
+02
+03
+04
+05
+06
+07
+08
+09
+10
+11
+12
+13
+14
+	
+@font-face {
+   font-family: "Alice";
+   font-style: normal;
+   font-weight: 400;
+   src: local("Alice"), local("Alice-Regular"),
+        url("http://fonts.gstatic.com/s/alice/v7/sZyKh5NKrCk1xkCk_F1S8A.eot?#") format("eot"),
+        url("http://fonts.gstatic.com/s/alice/v7/l5RFQT5MQiajQkFxjDLySg.woff2") format("woff2"),
+        url("http://fonts.gstatic.com/s/alice/v7/_H4kMcdhHr0B8RDaQcqpTA.woff")  format("woff"),
+        url("http://fonts.gstatic.com/s/alice/v7/acf9XsUhgp1k2j79ATk2cw.ttf")   format("truetype")
+}
+ 
+body {
+  font-family: "Alice";
+}
+
+Read more about postcss-font-magician at: https://github.com/jonathantneal/postcss-font-magician
+Project Setup
+
+There are six setup guides below: a Gulp and Grunt guide for each major preprocessor. There’s no need to read all six, you can just skip straight to the guide for your preferred preprocessor and build tool. If you’re not sure whether to use Gulp or Grunt, Gulp is definitely the simpler choice for this tutorial.
+
+For whichever guide you follow, you’ll need to begin with an empty Gulp or Grunt project. You can read about how to setup Gulp or Grunt projects for PostCSS in the previous tutorials
+
+    PostCSS Quickstart Guide: Gulp Setup or
+    PostCSS Quickstart Guide: Grunt Setup
+
+respectively.
+
+If you don’t want to manually setup your project from scratch though, you can download the source files attached to this tutorial, and extract either the provided Gulp or Grunt starter project into an empty project folder. Then with a terminal or command prompt pointed at the folder run the command npm install.
+Install PostCSS Plugins Into Your Project
+
+After you setup an empty project for one of the sections below, you’ll also need to install two PostCSS plugins: Autoprefixer and cssnano. You can do so by running the command:
+1
+	
+npm install autoprefixer cssnano --save-dev
+
+We’ll be using these two plugins to test that PostCSS and your preprocessor are working together as expected.
+Preprocess Before PostCSS
+
+The first rule of using a preprocessor with PostCSS is that you should always run said preprocessor first. This is because you don’t want to have any preprocessor-specific syntax in your code that might choke a PostCSS plugin, and you also don’t want PostCSS making changes to your code that might prevent a preprocessor from running as expected.
+PostCSS Plugins and “PostCSS Test Code”
+
+For each of the preprocessors we setup, we‘ll have them run autoprefixer and cssnano after the preprocessor has finished its compilation. In each case, we’ll need to add some test code for these two plugins to operate on.
+
+To save repeating the same code in each section below, when you see an instruction telling you to add your PostCSS test code, please add this to the preprocessor source file you’re working on:
+01
+02
+03
+04
+05
+06
+07
+08
+09
+10
+11
+12
+	
+.css_nano, .css_nano + p, [class*="css_nano"], .css_nano {
+    /* cssnano will remove this comment */
+    display: flex;
+    font-weight: normal;
+    margin-top: 1rem;
+    margin-bottom: 2rem;
+    margin-left: 1.5rem;
+    margin-right: 2.5rem;
+    font-weight: normal;
+    padding: 1.75rem;
+    width: calc(50rem - (2 * 1.75rem));
+}
+
+If successful, your compiled code will in each case come out as:
+1
+	
+.css_nano,.css_nano+p,[class*=css_nano]{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;margin:1rem 2.5rem 2rem 1.5rem;font-weight:400;padding:1.75rem;width:46.5rem}
+
+Note: the uses of flexbox have been autoprefixed, and cssnano has performed multiple optimizations of the code. We’re using the same code to test cssnano as we did in the previous For Minification and Optimization tutorial, so please refer to the “cssnano” section therein for details on the optimizations being performed.
+1. Sass + PostCSS
+
+Because you’re already working with Node.js to run Gulp or Grunt and PostCSS, the easiest way to use Sass alongside them is to do it via LibSass. This is also considerably faster than Ruby Sass. We’ll be deploying LibSass via the gulp-sass or grunt-contrib-sass modules.
+Setup via Gulp
+
+Install the gulp-sass module into your project with npm install gulp-sass --save-dev.
+
+Now you can update your Gulpfile to the following:
+01
+02
+03
+04
+05
+06
+07
+08
+09
+10
+11
+12
+13
+14
+15
+16
+17
+	
+var gulp = require('gulp');
+var postcss = require('gulp-postcss');
+var sass = require('gulp-sass');
+ 
+var autoprefixer = require('autoprefixer');
+var cssnano = require('cssnano');
+ 
+gulp.task('css', function () {
+    var processors = [
+        autoprefixer,
+        cssnano
+    ];
+    return gulp.src('./src/*.scss')
+        .pipe(sass().on('error', sass.logError))
+        .pipe(postcss(processors))
+        .pipe(gulp.dest('./dest'));
+});
+
+Let’s break down what we’ve changed from the default starter Gulpfile:
+
+    Added variables to load gulp-sass, autoprefixer and cssnano
+    Added the autoprefixer and cssnano variables to the processors array
+    Edited the file extension on the source file we’re compiling to “.scss” instead of “.css”
+    Added a new pipe() line, .pipe(sass()..., to process the Sass, being sure to place it before the line that processes PostCSS
+
+Now we can run some tests to make sure both Sass and PostCSS are compiling as expected.
+Test Preprocessor
+
+Rename your existing “src/style.css” file to “src/style.scss” and add the following test code to it:
+1
+2
+3
+4
+5
+6
+7
+	
+$font-stack: Helvetica, sans-serif;
+$primary-color: #333;
+ 
+body {
+  font: 100% $font-stack;
+  color: $primary-color;
+}
+
+Run gulp css and you should see a new “style.css” file appear in your “dest” folder with the contents:
+1
+2
+3
+	
+body {
+  font: 100% Helvetica, sans-serif;
+  color: #333; }
+Test PostCSS
+
+Now, add the PostCSS test code provided earlier in this tutorial to your “style.scss” file.
+
+Run your gulp css command and you should see the correct code appear in your “dest/style.css” file:
+1
+	
+body{font:100% Helvetica,sans-serif;color:#333}.css_nano,.css_nano+p,[class*=css_nano]{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;margin:1rem 2.5rem 2rem 1.5rem;font-weight:400;padding:1.75rem;width:46.5rem}
+Setup via Grunt
+
+Into your new Grunt project, install the grunt-contrib-sass module with npm install grunt-contrib-sass.
+
+Then add a grunt.loadNpmTasks() function for it under the existing one you have for PostCSS:
+1
+2
+	
+grunt.loadNpmTasks('grunt-postcss');
+grunt.loadNpmTasks('grunt-contrib-sass');
+
+You’ll now need to setup a new task for processing Sass. After this line:
+1
+	
+grunt.initConfig({
+
+...but before the existing postcss task, add this code:
+1
+2
+3
+4
+5
+6
+7
+	
+sass: {
+  dist: {
+    files: {
+      'src/style.css': 'src/style.scss'
+    }
+  }
+},
+
+Now we’ll register a task that will run Sass and then PostCSS. After the grunt.loadNpmTasks() function you just inserted, add:
+1
+	
+grunt.registerTask('css', ['sass', 'postcss']);
+Test Preprocessor
+
+To test your setup, rename your existing “src/style.css” file to “style.scss”. Add this Sass code to it:
+1
+2
+3
+4
+5
+6
+7
+	
+$font-stack: Helvetica, sans-serif;
+$primary-color: #333;
+ 
+body {
+  font: 100% $font-stack;
+  color: $primary-color;
+}
+
+Run the command grunt css and you should see a new file created in your “dest” folder named “style.css” and containing this code:
+1
+2
+3
+	
+body {
+  font: 100% Helvetica, sans-serif;
+  color: #333; }
+Setup PostCSS
+
+We’ll now get our Autoprefixer and cssnano plugins running. Update your Gruntfile’s processors array to the following:
+1
+2
+3
+4
+	
+processors: [
+  require('autoprefixer')(),
+  require('cssnano')()
+]
+Test PostCSS
+
+Add the PostCSS test code to your “style.scss” file, run the command grunt css again and you should find your recompiled “dest/style.css” file now contains the correct autoprefixed and optimized code.
+2. Stylus + PostCSS
+
+Stylus and PostCSS work particularly well together thanks to the creation of the PostStylus package by Sean King, which combines the processing of both Stylus and PostCSS. If you’re a Stylus developer, you can just add PostStylus to your compilation process and immediately have access to using PostCSS plugins as part of your workflow.
+
+PostStylus: https://github.com/seaneking/poststylus
+Setup via Gulp
+
+If you’re using the premade Gulpfile from the starter project, you’ll note is uses the gulp-postcss plugin. This is actually only there as it’s needed for the Sass and LESS setup processes, but for Stylus we won’t need it because we’re using PostStylus as our compiler instead.
+
+You can remove it from your project with npm uninstall gulp-postcss --save-dev, and delete this line from your Gulpfile:
+1
+	
+var postcss = require('gulp-postcss');
+
+Now we can install the two plugins we need for Stylus and PostCSS compilation, by running the command:
+1
+	
+npm install gulp-stylus poststylus --save-dev
+
+Update your Gulpfile to become:
+01
+02
+03
+04
+05
+06
+07
+08
+09
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+	
+var gulp = require('gulp');
+var stylus = require('gulp-stylus');
+var poststylus = require('poststylus');
+ 
+var autoprefixer = require('autoprefixer');
+var cssnano = require('cssnano');
+ 
+gulp.task('css', function () {
+    var processors = [
+        autoprefixer,
+        cssnano
+    ];
+    return gulp.src('./src/*.styl')
+        .pipe(stylus({
+            use: [
+                poststylus(processors)
+            ]
+        }))
+        .pipe(gulp.dest('./dest'));
+});
+
+Here’s what we’ve done above:
+
+    Added variables to load gulp-stylus, poststylus, autoprefixer and cssnano
+    Added the autoprefixer and cssnano variables to the processors array
+    Edited the file extension on the source file we’re compiling to “.styl” instead of “.css”
+    Removed the .pipe() line that read .pipe(postcss(processors))
+    Replaced it with .pipe(stylus({..., to set the gulp-stylus and poststylus modules to handle our compilation
+
+Test Preprocessor
+
+Now we’re ready to test compilation. In your “src” folder, rename “style.css” to “style.styl” and add this test Stylus code:
+1
+2
+3
+4
+5
+6
+	
+$font-stack = Helvetica, sans-serif
+$primary-color = #333
+ 
+body
+  font: 100% $font-stack
+  color: $primary-color
+
+Run the gulp css command and you should see a “style.css” file appear in your “dest” folder with this content:
+1
+2
+3
+4
+	
+body {
+  font: 100% Helvetica, sans-serif;
+  color: #333;
+}
+Test PostCSS
+
+Add the PostCSS test code provided earlier to your “style.styl” file, ensuring only tab indents are in the pasted code, not spaces.
+
+Recompile, and check that you have the appropriate output in your “dest/style.css” file.
+1
+	
+body{font:100% Helvetica,sans-serif;color:#333}.css_nano,.css_nano+p,[class*=css_nano]{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;margin:1rem 2.5rem 2rem 1.5rem;font-weight:400;padding:1.75rem;width:46.5rem}
+Setup via Grunt
+
+As with the Gulp project for Stylus, the default PostCSS compiler that comes with the starter project is not required, being there purely for Sass and LESS setup processes. You can remove it from your project with npm uninstall grunt-postcss --save-dev.
+
+Now we can install grunt-contrib-stylus and poststylus with the command:
+1
+	
+npm install grunt-contrib-stylus poststylus --save-dev
+
+We’re no longer going to be using grunt-postcss, so locate this line:
+1
+	
+grunt.loadNpmTasks('grunt-postcss');
+
+And replace it with:
+1
+	
+grunt.loadNpmTasks('grunt-contrib-stylus');
+
+Given we’re not using grunt-postcss, that means we’ll no longer need the postcss task we have defined inside grunt.initConfig({...});. Delete that task config and replace it with this new stylus task:
+1
+2
+3
+4
+5
+6
+7
+8
+9
+	
+stylus: {
+  compile: {
+    options: {
+    },
+    files: {
+      'dest/style.css': 'src/style.styl'
+    }
+  }
+}
+Test Preprocessor
+
+Now we’re ready to test compilation. In your “src” folder, rename “style.css” to “style.styl” and add this test Stylus code:
+1
+2
+3
+4
+5
+6
+	
+$font-stack = Helvetica, sans-serif
+$primary-color = #333
+ 
+body
+  font: 100% $font-stack
+  color: $primary-color
+
+Run the command grunt stylus and you should see a “style.css” file appear in your “dest” folder with this content:
+1
+	
+body{font:100% Helvetica,sans-serif;color:#333}
+Setup PostCSS
+
+To add our PostCSS plugins into the compilation process, we first need to add this code to the very top of our Gruntfile, above the module.exports... line:
+1
+2
+3
+	
+var poststylus = function() {
+  return require('poststylus')(['autoprefixer', 'cssnano'])
+};
+
+This is where you’ll load in any PostCSS plugins you want to use, rather than in a processors array as you’ll be used to from our other tutorials.
+
+Then find the options object inside the stylus task, and update it to the following:
+1
+2
+3
+	
+options: {
+  use: [poststylus]
+},
+
+This tells grunt-contrib-stylus to use poststylus during compilation, and its plugins along with it.
+Test PostCSS
+
+Add the “PostCSS test code” to your “src/style.styl” file, run grunt stylus, and you should see the following content written into your “dest/style.css” file:
+1
+	
+body{font:100% Helvetica,sans-serif;color:#333}.css_nano,.css_nano+p,[class*=css_nano]{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;margin:1rem 2.5rem 2rem 1.5rem;font-weight:400;padding:1.75rem;width:46.5rem}
+3. LESS + PostCSS
+Setup via Gulp
+
+Install the gulp-less module into your project with npm install gulp-less --save-dev.
+
+Now you can update your Gulpfile to the following:
+01
+02
+03
+04
+05
+06
+07
+08
+09
+10
+11
+12
+13
+14
+15
+16
+17
+	
+var gulp = require('gulp');
+var postcss = require('gulp-postcss');
+var less = require('gulp-less');
+ 
+var autoprefixer = require('autoprefixer');
+var cssnano = require('cssnano');
+ 
+gulp.task('css', function () {
+    var processors = [
+        autoprefixer,
+        cssnano
+    ];
+    return gulp.src('./src/*.less')
+        .pipe(less())
+        .pipe(postcss(processors))
+        .pipe(gulp.dest('./dest'));
+});
+
+Let’s break down what we’ve changed from the default starter Gulpfile:
+
+    Added variables to load gulp-less, autoprefixer and cssnano
+    Added the autoprefixer and cssnano variables to the processors array
+    Edited the file extension on the source file we’re compiling to “.less” instead of “.css”
+    Added .pipe(less()) to process the LESS, being sure to place it before the line that processes PostCSS
+
+Test Preprocessor
+
+Now we can run some tests to make sure both LESS and PostCSS are compiling as expected.
+
+Rename the existing “src/style.css” file to “src/style.less” and add the following test code to it:
+1
+2
+3
+4
+5
+6
+7
+	
+@font-stack: Helvetica, sans-serif;
+@primary-color: #333;
+ 
+body {
+  font: 100% @font-stack;
+  color: @primary-color;
+}
+
+Run gulp css and you should see a new “style.css” file appear in your “dest” folder with the contents:
+1
+	
+body{font:100% Helvetica,sans-serif;color:#333}
+Test PostCSS
+
+Now, to your “style.less” file add the PostCSS test code provided earlier in this tutorial.
+
+Run your gulp css command and you should see the correct code now appearing in your “dest/style.css” file.
+1
+	
+body{font:100% Helvetica,sans-serif;color:#333}.css_nano,.css_nano+p,[class*=css_nano]{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;margin:1rem 2.5rem 2rem 1.5rem;font-weight:400;padding:1.75rem;width:46.5rem}
+Advertisement
+Setup via Grunt
+
+Into your new Grunt project, install the grunt-contrib-less module with npm install grunt-contrib-less, then add a grunt.loadNpmTasks() function for it under the existing one you have for PostCSS:
+1
+2
+	
+grunt.loadNpmTasks('grunt-postcss');
+grunt.loadNpmTasks('grunt-contrib-less');
+
+You’ll now need to setup a new task for processing LESS. After this line:
+1
+	
+grunt.initConfig({
+
+...but before the existing postcss task, add this code:
+1
+2
+3
+4
+5
+6
+7
+	
+less: {
+  production: {
+    files: {
+      'src/style.css': 'src/style.less'
+    }
+  }
+},
+
+Now we’ll register a task, to run LESS and then PostCSS. After the grunt.loadNpmTasks() function you just inserted, add:
+1
+	
+grunt.registerTask('css', ['less', 'postcss']);
+Test Preprocessor
+
+To test your setup, rename your “src/style.css” file “style.less”. Add this LESS code to it:
+1
+2
+3
+4
+5
+6
+7
+	
+@font-stack: Helvetica, sans-serif;
+@primary-color: #333;
+ 
+body {
+  font: 100% @font-stack;
+  color: @primary-color;
+}
+
+Run the command grunt css and you should see a new file created in your “dest” folder named “style.css” and containing this code:
+1
+2
+3
+4
+	
+body {
+  font: 100% Helvetica, sans-serif;
+  color: #333333;
+}
+Setup PostCSS
+
+Now we’ll add our PostCSS plugins into compilation flow. Update your Gruntfile’s processors array to the following:
+1
+2
+3
+4
+	
+processors: [
+  require('autoprefixer')(),
+  require('cssnano')()
+]
+Test PostCSS
+
+Add the PostCSS test code to your “style.less” file, run the command grunt css again and you should find your recompiled “dest/style.css” file now contains the correct autoprefixed and optimized code:
+1
+	
+body{font:100% Helvetica,sans-serif;color:#333}.css_nano,.css_nano+p,[class*=css_nano]{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;margin:1rem 2.5rem 2rem 1.5rem;font-weight:400;padding:1.75rem;width:46.5rem}
+In the Next Tutorial
+
+Next up we’re going to check out something you could almost consider a different type of preprocessing–using PostCSS to automatically generated BEM/SUIT compliant CSS classes. This process makes BEM/SUIT development much easier to keep track of, not to mention more efficient.
+
+See you in the next tutorial!
+</pre>
+</body>
+</html>

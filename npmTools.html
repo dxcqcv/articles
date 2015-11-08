@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="author" content="keithamus">
+    <meta name="description" content="">
+    <title>npm tools</title>
+    <link rel="stylesheet" href="css/global.css" media="all">
+</head>
+<body>
+<a href="http://blog.keithcirkel.co.uk/how-to-use-npm-as-a-build-tool/">the link of articles</a><br>
+<pre>
+How to Use npm as a Build Tool
+
+Last month I noted my opinions on why we should stop using Grunt, Gulp et al. I suggested we should start using npm instead. npm's scripts directive can do everything that these build tools can, more succinctly, more elegantly, with less package dependencies and less maintainence overhead. The first draft of the original post was way over 6,000 words - because it went in depth into how npm could be used as an alternative, but I removed it for brevity - and because the point of that post was me expressing opinions, not a tutorial post. However, the response was pretty overwhelming - many people replied telling me that these build tools offers them features that npm cannot (or does not), some developers were brazen enough to present me with a Gruntfile and say "how could this be done in npm?!". I thought I'd pull out how-tos from the original draft and make a new post, just focussing on how to do these common tasks with npm.
+
+npm is a fantastic tool that offers much more than meets the eye. It has become the backbone of the Node.js community - many, including me, use it pretty much every day. In fact, looking at my Bash History (well, Fish history) npm is second only to git as my most used command. Still, I find new features in npm every day (and of course, new ones are still being developed!). Most of these aim at making npm a great package manager, but npm has a great subset of functionality decidated to running tasks to facilitate in a packages lifecycle - in other words, it is a great tool for build scripts.
+npm Scripts
+
+Firstly, we need to figure out how npm can manage our build scripts. As part of npm's core, it has the npm run-script command (npm run for short). This command dives into your package.json and pulls out the scripts Object. The first argument passed to npm run refers to a property in the scripts object - it will execute the property's value as a command in the operating systems default shell (usually Bash, except on Windows - but we'll get to that later). So let's say you have a package.json config that looks like this:
+
+{
+  "name": "myproject",
+  "devDependencies": {
+    "jshint": "latest",
+    "browserify": "latest",
+    "mocha": "latest"
+  },
+  "scripts": {
+    "lint": "jshint **.js",
+    "test": "mocha test/"
+  }
+}
+
+If you run npm run lint - npm will spawn a shell and run jshint **.js. If you run npm run test, npm will spawn a shell and run mocha test/. The shell environment has your node_modules/.bin folder added to the PATH which means any of the dependencies you have that install binaries will be runnable directly - in other words, no need to put "./node_modules/.bin/jshint **.js" or "$(npm bin)/jshint **.js". If you run npm run without any arguments it gives you a list of the available commands to run, like so:
+
+Available scripts in the user-service package:  
+  lint
+     jshint **.js
+  test
+    mocha test/
+
+The npm run shell environment provides lots of helpful features to make sure your scripts are as succinct as they can be. For example the shell's PATH has your ./node_modules/.bin/ folder inside of it, meaning any dependencies you install which have binaries can be called directly from a scripts shell. Also, there's a whole slew of super convenient environment variables that npm exposes, such as the currently running task, the package name and version, npm loglevel, and so on. Find them all out by making a script that runs env, and running it, like so:
+
+"scripts": {
+    "env": "env"
+}
+
+Shortcut scripts
+
+npm also provides a few convinient shortcuts. The npm test, npm start, npm stop commands are all shortcuts for their run equivalents, e.g. npm test is just a shortcut for npm run test. These shortcuts are useful for 2 reasons:
+
+    These are common tasks that most projects will use, and so it's nice to not have to type as much each time.
+    Much more importanlty - it provides a standard interface within npm for testing, starting and stopping a package. Many CI tools, such as Travis, take advantage of this behaviour by making the default command for a Node.js project npm test. It also makes introducing new developers to your project a breeze, if they know they can simply run scripts like npm test without ever having to read any docs.
+
+Pre and Post Hooks
+
+Another cool feature about npm is that any script that can be executed also has a set of pre- and post- hooks, which are simply definable in the scripts object. For example, if you execute npm run lint, despite npm having no preconceived idea of what the lint task is, it will immediately run npm run prelint, followed by npm run lint, followed by npm run postlint. The same is true for any command, including npm test (npm run pretest, npm run test, npm run posttest). The pre and post scripts are also exit-code-sensitive, meaning if your pretest script exits with a non-zero exit code, then NPM will immediately stop, and not run the test and posttest scripts. You can't pre- a pre- script though, so prepretest gets ignored. npm also runs the pre- and post- hooks for a few internal commands: install , uninstall, publish, update. You can't override the behaviours for the internal commands - but you can affect their behaviour with pre- and post- scripts. This means you can do cool stuff like:
+
+  "scripts": {
+    "lint": "jshint **.js",
+    "build": "browserify index.js > myproject.min.js",
+    "test": "mocha test/",
+
+    "prepublish": "npm run build # also runs npm run prebuild",    
+    "prebuild": "npm run test # also runs npm run pretest",
+    "pretest": "npm run lint"
+  }
+
+Passing Arguments
+
+Another cool feature with npm (since npm 2.0.0, at least) is passing argument sets through to the underlying tools. This can be a little complex, but here's an example:
+
+  "scripts": {
+    "test": "mocha test/",
+    "test:xunit": "npm run test -- --reporter xunit"
+  }
+
+With this config, we can simply run npm run test - which runs mocha test/, but we can extend it with custom parameters with a -- prefix. For example npm run test -- anothertest.js will run mocha test/ anothertest.js, or more usefully npm run test -- --grep parser will expand to mocha test/ --grep parser (which runs only the tests with "parser" in the title). In the package.json we have test:xunit which effectively runs mocha test --reporter xunit. This setup can be incredibly useful for composing commands together for some advanced configurations.
+NPM Config Variables
+
+One last thing that is worth mentioning - npm has a config directive for your package.json. This lets you set arbitrary values which can be picked up as environment variables in your scripts. Here's an example:
+
+  "name": "fooproject",
+  "config": {
+    "reporter": "xunit"
+  },
+  "scripts": {
+    "test": "mocha test/ --reporter $npm_package_config_reporter"
+    "test:dev": "npm run test --fooproject:reporter=spec"
+  }
+
+Here, the config object has reporter property - set to 'xunit'. All config options are exposed as environment variables prefixed with npm_package_config_ (which, admittedly, does make the variable names a mouthful). In the above example, the npm run test command uses the $npm_package_config_mocha_reporter variable which gets expanded to mocha test/ --reporter xunit. This can get replaced in two convinient ways:
+
+    Just like the test:dev task, you can change the reporter config variable to spec - by using --fooproject:reporter. You'd replace fooproject with your project's name, and reporter with the config variable to override.
+    They can also be overriden as part of a user's config. By running npm config set fooproject:reporter spec - an entry in my ~/.npmrc appears (fooproject:reporter=spec) which is read at runtime, and overrides the npm_package_config_reporter variable, meaning that on my local machine, forever more, npm run test gets expanded to mocha test/ --reporter spec. I can remove my personalised setting for this using npm config delete fooproject:mocha_reporter. A good set up for this is to have some sensible defaults in your package.json - but your own customisations can be tucked away inside your own ~/.npmrc.
+
+Now, if I'm totally honest I'm not in love with the way this works. While the setup seems trivial (having a "config" object in your JSON), trying to use them is seems too verbose and complicated. I would also like a simpler way to override package configs, without specifying the package's name - it'd be awesome if standard conventions could come into place where I could set my favourite mocha reporter for all packages in my ./.npmrc.
+
+The other downside to these configs is that they're not very Windows friendly - Windows uses % for variable substitution, while bash uses $. They work fine if you use them within a Node.js script, but if anyone knows of a way to get them working in Windows via the shell commands, let me know!
+The Windows Problem
+
+Let's get something out of the way before we progress. Because npm is reliant on the operating systems shell to run scripts commands, they can quickly become unportable. While Linux, Solaris, BSD and Mac OSX come preinstalled with Bash as the default shell, Windows does not. On Windows, npm will resort to using Windows command prompt for these things.
+
+Frankly, this is less of a problem than it seems. A good chunk of syntax that works in Bash will also work in Windows command prompt the same way:
+
+    && for chaining tasks
+    & for running tasks simaltaneously
+    < for inputting the contents (stdin) of a file to a command
+    > for redirecting output (stdout) of a command and dumping it to a file
+    | for redirecting output (stdout) of a command and sending it to another command
+
+The biggest problems between the two is the availability and naming of commands (e.g. cp is COPY in Windows) and variables (Windows uses % for variables, Bash $). I feel like both of these are completely surmountable problems:
+
+    Rather than relying on built in commands, you could simply use alternatives - for example instead of using rm, use the npm rimraf package.
+    Rather than trying to use syntax that is not cross compatible, stick to just the above ones. You'd be surprised just how much you can get done with just &&, >, |, and <. Variables are for suckers anyway.
+
+Replacing build tools
+
+Ok, lets get to the brass tacks of this post. If we want to replace build tools like Grunt or Gulp, we need like-for-like replacements for plugins and features of these tools. I've taken the most popular tasks & paradigms from various projects, and questions from commenters of my last post and demonstrated how to do them in npm:
+Using multiple files
+
+I had a few people responding to my last post, saying the benefit of task runners is their ability to handle multiple files in tasks using file "globs" which look like *.js, *.min.css or assets/*/*. This feature was actually inspired from Bash, which in turn was inspired from the glob command from Unix in 1969. The shell will automatically look at a command line arguments such as *.js and expand the stars out as wildcards. Using two stars allows it to search recursively. If you're on a Mac or Linux machine, try opening up your shell and playing with it (try something like ls *.js).
+
+Now, the problem herein lies that, of course, the Windows command line does not have this functionality. Luckily, when given a command line argument like *.js - Windows passes it verbatum to the application, meaning that tool vendors can install compatibility libraries to give Windows glob like functionality. Many, many tools on npm do; the two most popular glob libraries, minimatch and glob, share 1500 dependents, including JSHint, JSCS, Mocha, Jade, Stylus, Node-Sass... the list goes on.
+
+This means you can just use file globs within npm scripts, like so:
+
+"devDependencies": {
+  "jshint": "latest"
+},
+"scripts": {
+  "lint": "jshint *.js"
+}
+
+Running multiple tasks
+
+Grunt, Gulp etc all have the capability of tying multiple tasks up together to make one single task - typically useful for building or testing. With npm you have two options here - depending on which one is semantically the right fit. You can either use the pre- or post- hooks - which are a good fit if the task is a prerequisite thing (i.e concating js before minfiying it), or you can use the bash && operator - like so:
+
+"devDependencies": {
+  "jshint": "latest",
+  "stylus": "latest",
+  "browserify": "latest"
+},
+"scripts": {
+  "lint": "jshint **",
+  "build:css": "stylus assets/styles/main.styl > dist/main.css",
+  "build:js": "browserify assets/scripts/main.js > dist/main.js",
+  "build": "npm run build:css && npm run build:js",
+  "prebuild:js": "npm run lint"
+}
+
+In the above example build will execute both build:css and build:js - but not before running the lint task. Using this pattern you can also run the build:css or build:js tasks separately, and build:js will also run lint beforehand. Tasks can be composed and chained like this as much as you like, and it is all Windows compatible.
+Streaming to multiple tasks
+
+One of Gulp's biggest features is that it streams the output seamlessly from one task to the next (as opposed to Grunt which constantly dips in and out of the filesystem). Bash and the Windows command line have the pipe operator (|), which can stream one command's output (stdout) and send it to another command's input (stdin). Let's say you want to run all of your CSS first through Autoprefixer, then CSSMin, then output to a file (using the > operator, which outputs stdout to a given file):
+
+"devDependencies": {
+  "autoprefixer": "latest",
+  "cssmin": "latest"
+},
+"scripts": {
+  "build:css": "autoprefixer -b 'last 2 versions' < assets/styles/main.css | cssmin > dist/main.css"
+}
+
+As you can see autoprefixer adds the CSS vendor prefixes to our CSS, which is then piped to cssmin which minifies the output - then the whole thing gets dumped into dist/main.css. Most good tools will support stdin and stdout and the above code is fully compatible with Windows, Mac and Linux.
+Version Bumping
+
+Version bumping is a popular Grunt or Gulp task. Effectively it increments the version number up by one inside the package.json, makes a git commit, and tags said commit.
+
+This actually comes baked into npm (it is a package manager after all). Simply run npm version patch to increment the patch number (e.g. 1.1.1 -> 1.1.2), npm version minor to increment the minor version number (e.g. 1.1.1 -> 1.2.0) or npm version major (e.g. 1.1.1 -> 2.0.0). It'll commit and tag up your package for you, all that is left is to git push and npm publish.
+
+This can be fully customised too. For example, if you don't want it running git tag, simply run it with the --git-tag-version=false flag (or set it to permanently not with npm config set git-tag-version false). Want to configure the commit message? Simply run it with the -m flag, e.g. npm version patch -m "Bumped to %s" (set it permanently with npm config set message "Bumped to %s"). You can even get it to sign the tags for you, by running with the --sign-git-tag=true flag (or, once again, set it permanently with npm config set sign-git-tag true).
+Clean
+
+Many build runners come with a clean task. This task usually just removes a bunch of files so you can start with a fresh working copy to start building into. Well, turns out that Bash has a pretty good clean command all by itself: rm. Passing the -r (recursive) flag lets rm remove directories too! It couldn't be simpler:
+
+"scripts": {
+  "clean": "rm -r dist/*"
+}
+
+If you really need to have Windows support, it does not support rm - luckily there is rimraf which is a cross-compatible tool to do the same thing:
+
+"devDependencies": {
+  "rimraf": "latest"
+},
+"scripts": {
+  "clean": "rimraf dist"
+}
+
+Compiling files to unique names
+
+Effectively, trying to replace the functionality of gulp-hash and grunt-hash - take an input of JS and name it with the hash of its contents. This one turned out to be really complex to do using existing command line tools, so I had a look on npm to see if anything fit the bill, and it didn't - so I wrote one (I can hear the Grunt/Gulp proponents telling me I cheated already). I have two points about this - firstly, it's pretty disappointing to see lots of siloed efforts from various plugin authors - and no generic solutions that work with any build tool. Secondly - if you can't find something that fits, write your own! My hashmark library clocks in around the same lines of code as the grunt/gulp versions, and has a similar or better featureset, depending on the plugin - mine even supports streaming! Going back to the autoprefixer example, we can output a file with a specific hash using pipes:
+
+"devDependencies": {
+  "autoprefixer": "latest",
+  "cssmin": "latest"
+},
+"scripts": {
+  "build:css": "autoprefixer -b '> 5%' < assets/styles/main.css | cssmin | hashmark -l 8 'dist/main.#.css'"
+}
+
+Now the ouput of build:css will ouput a file in dist named with a hash, such as dist/main.3ecfca12.css.
+Watch
+
+This is definitely the most popular reason why people using Grunt/Gulp, and by far the most requested example from comments around my previous post. A lot of these build tools come with commands for watching a filesystem, detecting changes to files (e.g. from saving), and then reloading the server/recompiling assets/rerunning tests. Very useful for rapid development. It seems like most developers replying to my last post simply assumed that this wasn't an option outside of Grunt/Gulp (or perhaps thought it was something too difficult to do without them).
+
+Well, most tools facilitate this option themselves - and usually are much more in tune with the intricacies of the files that should be listened for. For example Mocha has the -w option, as does Stylus, Node-Sass, Jade, Karma, and others. You could use these options like so;
+
+"devDependencies": {
+  "mocha": "latest",
+  "stylus": "latest"
+},
+"scripts": {
+  "test": "mocha test/",
+  "test:watch": "npm run test -- -w",
+
+  "css": "stylus assets/styles/main.styl > dist/main.css",
+  "css:watch": "npm run css -- -w"
+}
+
+Of course, not all tools support this, and even when they do - you might want to compose multiple compile targets into one task which watches for changes and runs the whole set. There are tools that watch files and execute commands when files change, for example watch, onchange, dirwatch, or even nodemon:
+
+"devDependencies": {
+  "stylus": "latest",
+  "jade": "latest",
+  "browserify": "latest",
+  "watch": "latest",
+},
+"scripts": {
+  "build:js": "browserify assets/scripts/main.js > dist/main.js",
+  "build:css": "stylus assets/styles/main.styl > dist/main.css",
+  "build:html": "jade assets/html/index.jade > dist/index.html",
+  "build": "npm run build:js && npm run build:css && npm run build:html",
+  "build:watch": "watch 'npm run build' .",
+}
+
+There you go - pretty painless. This 13 lines of JSON will watch our whole project directory, and build HTML, CSS and JS assets every time any file changes. Just run npm run build:watch and start developing! You could even optimise this further, with a little tool I wrote (once again, while writing this post): Parallelshell, which will keep multiple processes running at one time - a little like this:
+
+"devDependencies": {
+  "stylus": "latest",
+  "jade": "latest",
+  "browserify": "latest",
+  "watch": "latest",
+  "parallelshell": "latest"
+},
+"scripts": {
+  "build:js": "browserify assets/scripts/main.js > dist/main.js",
+  "watch:js": "watch 'npm run build:js' assets/scripts/",
+  "build:css": "stylus assets/styles/main.styl > dist/main.css",
+  "watch:css": "watch 'npm run build:css' assets/styles/",
+  "build:html": "jade index.jade > dist/index.html",
+  "watch:html": "watch 'npm run build:html' assets/html",
+  "build": "npm run build:js && npm run build:css && npm run build:html",
+  "build:watch": "parallelshell 'npm run watch:js' 'npm run watch:css' 'npm run watch:html'",
+}
+
+Now running npm run build:watch will run the individual watchers all through Parallelshell and if, for example, you only change the CSS, then only the CSS will recompile. If you change the JS then only the JS will recompile and so on. Parallelshell combines the outputs (stdout and stderr) of each of the tasks, and will listen to the exit code to ensure logs and failed builds propagate out (unlike the Bash/Windows & operator).
+LiveReload
+
+LiveReload was another popular one. If you don't know what LiveReload is - its a combination of command line tool and browser extension (or custom server) - as files change, LiveReload triggers the page you're looking at to reload meaning you never have to press refresh. The npm package live-reload is a pretty suitable command line client for this - it runs a server which only serves a JS file, which if you include on your page will notify the page of changes. Simple, yet effective. Here's an example of how to get it working:
+
+"devDependencies": {
+  "live-reload": "latest",
+},
+"scripts": {
+  "livereload": "live-reload --port 9091 dist/",
+}
+
+<!-- In your HTML file -->  
+<script src="//localhost:9091"></script>  
+
+Now running npm run livereload - when you visit the HTML page it'll start listening to the livereload server. Any changes to files in the dist/ directory will notifiy clients, and the page will be reloaded.
+Running tasks that don't come with binaries
+
+It was pointed out to me that there are libs that don't come with binaries - such as favicon - and so Grunt/Gulp plugins can be useful because they wrap the tools so they can be used within the task runners. If you find a package that you want to use, but it doesn't have a binary then simply write some JavaScript! You would have to if using Grunt or Gulp, so don't be afraid to just chuck a bit of JavaScript somewhere that wires it all up (or even better, submit a PR to the maintainers convincing them to support a command line interface!):
+
+// scripts/favicon.js
+var favicons = require('favicons');  
+var path = require('path');  
+favicons({  
+    source: path.resolve('../assets/images/logo.png'),
+    dest: path.resolve('../dist/'),
+});
+
+"devDependencies": {
+  "favicons": "latest",
+},
+"scripts": {
+  "build:favicon": "node scripts/favicon.js",
+}
+
+A fairly complex config
+
+In my previous post many were telling me I was missing the point about task runners - they're for wiring up complex sets of tasks, not just running odd tasks. So I thought I'd wrap up this piece with a complex set of tasks typical of a multi-hundred-line Gruntfile. For this example I want to do the following:
+
+    Take my JS and lint, test & compile it into 1 versioned file (with a separate sourcemap) and upload it to S3
+    Compile Stylus into CSS, down to a single, versioned file (with separate sourcemap), upload it to S3
+    Add watchers for testing and compilation
+    Add a static file server to see my single page app in a web browser
+    Add livereload for CSS and JS
+    Have a task that combines all these files so I can type one command and spin up an environment
+    For bonus points, open a browser window automagically pointing to my website
+
+I've chucked up a simple repository on GitHub called npm-scripts-example. It contains the layout for a basic website, and a package.json to fit the above tasks. The lines you're probably interested in are:
+
+  "scripts": {
+    "clean": "rimraf dist/*",
+
+    "prebuild": "npm run clean -s",
+    "build": "npm run build:scripts -s && npm run build:styles -s && npm run build:markup -s",
+    "build:scripts": "browserify -d assets/scripts/main.js -p [minifyify --compressPath . --map main.js.map --output dist/main.js.map] | hashmark -n dist/main.js -s -l 8 -m assets.json 'dist/{name}{hash}{ext}'",
+    "build:styles": "stylus assets/styles/main.styl -m -o dist/ && hashmark -s -l 8 -m assets.json dist/main.css 'dist/{name}{hash}{ext}'",
+    "build:markup": "jade assets/markup/index.jade --obj assets.json -o dist",
+
+    "test": "karma start --singleRun",
+
+    "watch": "parallelshell 'npm run watch:test -s' 'npm run watch:build -s'",
+    "watch:test": "karma start",
+    "watch:build": "nodemon -q -w assets/ --ext '.' --exec 'npm run build'",
+
+    "open:prod": "opener http://example.com",
+    "open:stage": "opener http://staging.example.internal",
+    "open:dev": "opener http://localhost:9090",
+
+    "deploy:prod": "s3-cli sync ./dist/ s3://example-com/prod-site/",
+    "deploy:stage": "s3-cli sync ./dist/ s3://example-com/stage-site/",
+
+    "serve": "http-server -p 9090 dist/",
+    "live-reload": "live-reload --port 9091 dist/",
+
+    "dev": "npm run open:dev -s & parallelshell 'npm run live-reload -s' 'npm run serve -s' 'npm run watch -s'"
+  }
+
+(If you're wondering what the -s flag is, it just silences output from npm on those tasks, cleaning up the log output, try disabling them to see the difference)
+
+To do the equivalent in Grunt, it'd take a Gruntfile of a few hundred lines, plus (my finger in the air estimate) around 10 extra dependencies. It's certainly subjective as to which version would be more readable - and while npm is certainly not the holy grail of readability, I personally think the npm scripts directive is easier to reason about (i.e. I can see all tasks and what they do, at a glance).
+Conclusion
+
+Hopefully this article shows you how capable npm can be as a build tool. Hopefully it has demonstrated to you that tools like Gulp and Grunt should not always be the first thing to jump to in a project, and that tools you probably already have on your system are worth investigating.
+
+As always, feel free to discuss this with me on The Twitter, I'm @keithamus, you can "Follow" me there too, apparently.
+
+</pre>
+</body>
+</html>

@@ -1,0 +1,447 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="author" content="Kezz Bracey">
+    <meta name="description" content="">
+    <title>PostCss optimization</title>
+    <link rel="stylesheet" href="css/global.css" media="all">
+</head>
+<body>
+<a href="http://webdesign.tutsplus.com/tutorials/using-postcss-for-minification-and-optimization--cms-24568?utm_source=Tuts+&utm_medium=website&utm_campaign=relatedtutorials&utm_content=sidebar&WT.mc_id=Tuts+_website_relatedtutorials_sidebar">the link of articles</a><br>
+<pre>
+Using PostCSS for Minification and Optimization
+
+In the last tutorial you learned how to use PostCSS to help make your stylesheets more cross browser compatible, in particular dealing with issues arising from support for legacy versions of IE.
+
+In this tutorial we’re going to learn how to make your stylesheets more efficient and load faster, by using PostCSS to perform various minification and optimization operations.
+
+You’ll learn how to:
+
+    Combine multiple stylesheets into one via the @import rule, even if some of your stylesheets are coming from Bower components or npm modules, ensuring you need only a single http request to load your site’s CSS.
+    Combine matching media queries into one, allowing you to use the same media query in multiple locations during development but still end up with the efficiency of consolidated queries in your final stylesheet.
+    Use the cssnano pack to perform all kinds of optimizations from stripping white space and comments to minifying certain types of code and much more.
+
+Let’s get started!
+Setup Your Project
+
+The first thing you’ll need to do is setup your project to use either Gulp or Grunt, depending on your preference. If you don't already have a preference for one or the other I recommend using Gulp as you'll need less code to achieve the same ends, so you should find it a bit simpler to work with.
+
+You can read about how to setup Gulp or Grunt projects for PostCSS in the previous tutorials
+
+    PostCSS Quickstart Guide: Gulp Setup or
+    PostCSS Quickstart Guide: Grunt Setup
+
+respectively.
+
+If you don't want to manually setup your project from scratch though, you can download the source files attached to this tutorial, and extract either the provided Gulp or Grunt starter project into an empty project folder. Then with a terminal or command prompt pointed at the folder run the command npm install.
+Install Plugins
+
+For this tutorial we’re going to be using two individual plugins, plus a plugin pack. Install them by running the following command inside your project folder:
+1
+	
+npm install postcss-import css-mqpacker cssnano --save-dev
+
+Now the plugins are installed, let’s go ahead and load them into your project.
+Load Plugins via Gulp
+
+If you’re using Gulp, add these variables under the variables already in the file:
+1
+2
+3
+	
+var atImport = require('postcss-import');
+var mqpacker = require('css-mqpacker');
+var cssnano = require('cssnano');
+
+Now add each of those new variable names into your processors array:
+1
+2
+3
+4
+5
+	
+var processors = [
+    atImport,
+    mqpacker,
+    cssnano
+];
+
+Do a quick test that everything is working by running the command gulp css then checking that a new “style.css” file has appeared in your project’s “dest” folder.
+Load Plugins via Grunt
+
+If you’re using Grunt, update the processors object, which is nested under the options object, to the following:
+1
+2
+3
+4
+5
+	
+processors: [
+  require('postcss-import')(),
+  require('css-mqpacker')(),
+  require('cssnano')()
+]
+
+Do a quick test that everything is working by running the command grunt postcss then checking that a new “style.css” file has appeared in your project’s “dest” folder.
+
+That has all the plugins installed and loaded, so let’s move onto learning how to use them for minification and optimization.
+Inline/Combine Files with @import
+
+Rather than individually loading multiple stylesheets, it’s more efficient wherever possible to combine your stylesheets into one.
+
+For example, use of Normalize.css is very common, but, if you load it as a standalone stylesheet before your main stylesheet, it requires multiple http requests, hence slowing down load time.
+
+However if you use the postcss-import plugin by Maxime Thirouin, you can combine Normalize.css into your main stylesheet, via use of the @import rule, giving you the same CSS with only one http request.
+@import then Inline Normalize.css
+
+Let’s go ahead and do this now, importing and then inlining Normalize.css into our project’s stylesheet. Start by downloading “normalize.css” into your project’s “src” folder, from https://necolas.github.io/normalize.css/
+
+At the top of your “src/style.css” file add the following line:
+1
+	
+@import 'normalize.css';
+
+As you already have postcss-import installed, that’s all you have to do. It will see the @import rule and automatically inline the code from the normalize.css file into your stylesheet.
+
+Compile your file, and when you look at your “dest/style.css” file you should see the entire contents of “normalize.css” therein:
+1
+	
+/*! normalize.css v3.0.2 | MIT License | git.io/normalize */html{font-family:sans-serif;.......
+
+You can use this same process to combine as many separate stylesheets as you need to. Just place @import lines in your “src/style.css” file wherever you want the inlined code to be inserted.
+Automatic Bower Component and Node Module Discovery
+
+One very helpful feature of this plugin is its ability to automatically discover CSS files situated inside your “bower_components” or “node_modules” folder.
+
+For example, rather than manually downloading “normalize.css” as we did above, you could instead just run the command bower install normalize.css --save in your project. This would automatically download the latest “normalize.css” file into the “bower_components/normalize.css” folder.
+
+Note: If you don’t have Bower setup on your computer learn how here.
+
+At the top of your stylesheet, you could now instead use this line:
+1
+	
+@import 'normalize.css/normalize.css';
+
+The postcss-import plugin will look inside your “bower_components” folder and find “normalize.css”, then proceed to inline it just as in the previous example.
+
+The same process can be followed for any stylesheets that are in your “node_modules” folder, meaning you can use either Bower or npm to handle downloads, dependency management and updates. When using either service this plugin gives you an easy means of combining third party CSS files into your own stylesheets.
+Ways to Leverage @import Inlining
+
+Inlining imported CSS files in this way is not only a very efficient way of combining files from different sources, such as Bower components, it also gives you the option of organizing your project into multiple separate stylesheets.
+
+For example, you might create one file to control your layout, and another to control your color scheme. If you wanted to change your color scheme you could then follow a process like this:
+
+    Duplicate original color stylesheet
+    Modify it with new color codes
+    Import the new color stylesheet into your project
+    Compile to create alternate colored stylesheet
+
+You could then repeat this process as many times as you wanted, making it efficient to create multiple color schemes for the same design.
+
+Some projects use separate stylesheets to provide multiple color schemes like this, but in the process create slowdown from added http requests. With this approach you always end up with just one http request, despite having a lot of freedom in what might be included in your single stylesheet.
+
+Read more about postcss-import at: https://github.com/postcss/postcss-import
+Combine Matching Media Queries
+
+The css-mqpacker plugin by Kyo Nagashima will find matching media queries in your stylesheet and combine them into one. This allows you to organize your CSS how you please in your development stylesheets, repeating media queries if you need to, without concern over any loss of efficiency in your production stylesheet.
+
+Let’s put together an example of the type of use case where you might want to repeat media queries, such as if you’re organizing your design’s layout and visuals separately. In a real project this might mean using completely separate files, one for layout and one for visuals, but for the sake of simplicity we’ll do this all in our “src/style.css” file.
+
+We’ll start with some layout code. We’ll add a .column class that will make two 50% width columns sit side by side, by default. Then we’ll use a media query to have them stack on top of each other at smaller sizes. Add this code to your stylesheet:
+01
+02
+03
+04
+05
+06
+07
+08
+09
+10
+11
+12
+13
+	
+/* LAYOUT */
+ 
+.column {
+    width: 50%;
+    float: left;
+}
+ 
+@media (max-width: 50rem) {
+    .column {
+        width: 100%;
+        float: none;
+    }
+}
+
+Next we’ll add some visuals to set a gray border around our columns. The first column will have the class .column_one and the second will have the class .column_two. We’re going to use the same media query as we did with our layout to change up how we apply a border to our columns, depending on whether they’re sitting side by side or one on top of the other.
+
+Add this code to your stylesheet as well:
+01
+02
+03
+04
+05
+06
+07
+08
+09
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+	
+/* VISUALS */
+ 
+.column_one, .column_two {
+    border: 0.0625rem solid #ccc;
+}
+ 
+.column_two {
+    border-left: 0;
+}
+ 
+@media (max-width: 50rem) {
+    .column_one, .column_two {
+        border: 0.0625rem solid #ccc;
+    }
+ 
+    .column_two {
+        border-top: 0;
+    }
+}
+
+Now, recompile your “src/style.css” file and take a look at the resulting “dest/style.css” content.
+
+As you can see in the code below, the css-mqpacker plugin has identified the two matching media queries, and combined them into one:
+01
+02
+03
+04
+05
+06
+07
+08
+09
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+	
+/* LAYOUT */
+ 
+.column {
+    width: 50%;
+    float: left;
+}
+ 
+/* VISUALS */
+ 
+.column_one, .column_two {
+    border: 0.0625rem solid #ccc;
+}
+ 
+.column_two {
+    border-left: 0;
+}
+ 
+@media (max-width: 50rem) {
+ 
+    .column {
+        width: 100%;
+        float: none;
+    }
+ 
+    .column_one, .column_two {
+        border: 0.0625rem solid #ccc;
+    }
+ 
+    .column_two {
+        border-top: 0;
+    }
+}
+
+Note: The above code will be minified in your “dest/style.css” file due to the cssnano plugin. To see the code unminified, temporarily comment out cssnano from your Gulpfile or Gruntfile’s processors array.
+
+Read more about css-mqpacker at https://github.com/hail2u/node-css-mqpacker
+cssnano Plugin Pack
+
+For comprehensive and multifaceted CSS optimization, the cssnano pack by Ben Briggs is a very powerful option, yet one that is pretty much plug and play. It brings together around twenty-five plugins, and can perform an impressive number of different types of optimization.
+
+Among a long list of optimizations, it can:
+
+    Strip whitespace and final semicolons
+    Remove comments
+    Optimize font weights
+    Discard duplicate rules
+    Optimize calc() use
+    Minify selectors
+    Minimize longhand properties
+    Merge rules
+
+We’re going to process some example code in your project that will see all of the above optimizations applied.
+
+Add this code to your “src/style.css” file:
+01
+02
+03
+04
+05
+06
+07
+08
+09
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+	
+.css_nano, .css_nano + p, [class*="css_nano"], .css_nano {
+    /* This is an example of cssnano in action */
+    font-weight: normal;
+    margin-top: 1rem;
+    margin-bottom: 2rem;
+    margin-left: 1.5rem;
+    margin-right: 2.5rem;
+    font-weight: normal;
+    padding: 1.75rem;
+    width: calc(50rem - (2 * 1.75rem));
+}
+ 
+a {
+    text-decoration: none;
+    font-weight: bold;
+}
+ 
+p {
+    font-weight: bold;
+}
+
+Then recompile your file.
+
+Note: you may wish to comment out any code you already had, so you can clearly see the results.
+
+In your “dest/style.css” file you should now see the optimized code:
+1
+	
+.css_nano,.css_nano+p,[class*=css_nano]{margin:1rem 2.5rem 2rem 1.5rem;font-weight:400;padding:1.75rem;width:46.5rem}a{text-decoration:none}a,p{font-weight:700}
+
+Have a look through the list of optimizations mentioned in the bullet list above, then compare the example code before and after compilation to see how each one of these changes takes place:
+
+    Whitespace, comments and final semicolons are gone
+    font-weight: normal and font-weight: bold are converted to font-weight: 400 and font-weight: 700
+    The second, repeated instance of the rule font-weight: normal; has been removed from the .css_nano style
+    The calc() property has been reduced to a static value
+    The selectors .css_nano, .css_nano + p, [class*="css_nano"], .css_nano have been minified to .css_nano,.css_nano+p,[class*=css_nano]
+    The longhand properties margin-top: 1rem; margin-bottom: 2rem; margin-left: 1.5rem; margin-right: 2.5rem; have been reduced to margin:1rem 2.5rem 2rem 1.5rem;
+    The a and p styles have been merged to share their common font-weight: 700; setting
+
+For a full list of optimizations cssnano provides check out: http://cssnano.co/optimisations/
+Configuring Options and Disabling Modules
+
+There are several independent plugins employed by the cssnano pack, and you may wish to configure settings for, or fully disable, some of them.
+
+To disable a plugin, pass its name in your options for cssnano with the setting “false” applied. For example, if you don’t want to optimize font weights set the following in your Gulpfile/Gruntfile:
+1
+2
+3
+4
+5
+6
+7
+8
+9
+	
+// In Gulpfile 'processors' array
+cssnano({
+    minifyFontWeight: false
+})
+ 
+// In Gruntfile 'processors' array
+require('cssnano')({
+    minifyFontWeight: false
+})
+
+You can follow the same approach to configure options for a plugin, giving the name of the plugin first then setting its options.
+
+For example, you can set the precision, (number of decimal places), the calc plugin should use. By default calc( 100% / 2.76 ) would give you 36.23188%. But if you wanted to trim that precision down to two decimal places you could do it like so:
+1
+2
+3
+4
+5
+6
+7
+8
+9
+	
+// In Gulpfile 'processors' array
+cssnano({
+    calc: {precision: 2}
+})
+ 
+// In Gruntfile 'processors' array
+require('cssnano')({
+    calc: {precision: 2}
+})
+
+The calc value would now output to 36.23%.
+
+For more info on cssnano options visit: http://cssnano.co/options
+Advertisement
+Quick Recap
+
+Let’s have a rundown of what we covered above:
+
+    The postcss-import plugin gives you an efficient way to inline stylesheets.
+    It can be used to combine third party stylesheets, including through auto-discovery in your “bower_components” or “npm_modules” folder.
+    It can be used to allow you to split your stylesheets into parts, then recombine them later.
+    The css-mqpacker plugin allows you to duplicate media queries so you can organize your CSS how you please, including into separate files, and then have all matching media queries combined in your final stylesheet.
+    The cssnano pack brings together around 25 different plugins, giving plug and play access to a long list of minification and optimization functions.
+    It can be configured to use whichever included plugins you want, with the options you want.
+
+Up Next: Preprocessing with PreCSS
+
+In the next tutorial we’ll dive into using PostCSS for preprocessing via an excellent plugin pack named PreCSS. This pack gives immediate access to Sass-like syntax and functionality, with variables, mixins, conditionals, extends and more.
+
+See you in the next tutorial!
+</pre>
+</body>
+</html>
+
