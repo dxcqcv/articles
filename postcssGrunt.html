@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="author" content="Kezz Bracey">
+    <meta name="description" content="">
+    <title>PostCSS Quickstart Guide: Grunt Setup</title>
+    <link rel="stylesheet" href="css/global.css" media="all">
+</head>
+<body>
+<a href="http://webdesign.tutsplus.com/tutorials/postcss-quickstart-guide-grunt-setup--cms-24545?utm_source=Tuts+&utm_medium=website&utm_campaign=relatedtutorials&utm_content=sidebar&WT.mc_id=Tuts+_website_relatedtutorials_sidebar">the link of articles</a><br>
+
+<pre>
+In the last tutorial we went through how to setup a PostCSS project with Gulp. In this tutorial we’ll achieve the same ends, by using Grunt. By the end of this tutorial you’ll know how to setup a PostCSS + Grunt project with any selection of plugins you choose.
+
+Note: If you’ve never worked with command line or task runners before, I recommend that before you begin this tutorial you check out our free series: The Command Line for Web Design.
+
+Prerequisites
+As we’ll be working with Grunt, we’ll assume you already have the prerequisites for its use installed:
+
+Node.js
+NPM
+Git
+If you’re not sure if you have these installed, please follow the tutorial The Command Line for Web Design: Taming 3rd Party Packages.
+
+Please ensure you have Grunt CLI installed globally and understand its basic use by following The Command Line for Web Design: Automation with Grunt. Additionally, follow the instructions in the tutorial’s “Setup Project for Grunt” section. Before you move on you should have a project folder with:
+
+A “gruntfile.js” (Gruntfile)
+A “package.json” file
+Grunt installed into the “node_modules” folder and set as a dev dependency for your project.
+PostCSS via Grunt
+
+Into your project folder add two subfolders, one named “src” and the other named “dest”. The “src” folder will hold your unprocessed CSS files, and PostCSS will write your compiled CSS files into the “dest” folder.
+
+The next thing you’ll need to do is install the Grunt plugin for PostCSS into your project: we’ll be using grunt-postcss to handle compilation.
+
+In a terminal/command prompt pointed at your project folder, run the command:
+
+1
+npm install grunt-postcss --save-dev
+At this point your project structure should look like this:
+
+<img src="img/postcssGrunt/pGrunt01.png" alt="" />
+
+Open up your Gruntfile for editing and start by adding the basic shell of code that all Gruntfiles require:
+
+1
+2
+3
+4
+5
+module.exports = function(grunt) {
+ 
+   
+ 
+};
+Inside that, we’re going to use the grunt.loadNpmTasks() function to load in our grunt-postcss plugin like so:
+
+1
+2
+3
+4
+5
+module.exports = function(grunt) {
+ 
+  grunt.loadNpmTasks('grunt-postcss');
+ 
+};
+Now we’re ready to start configuring the Grunt task we’ll use to run postcss. First, add the grunt.initConfig() function above the line we just added:
+
+1
+2
+3
+4
+5
+6
+7
+8
+9
+module.exports = function(grunt) {
+ 
+  grunt.initConfig({
+  
+  });
+ 
+  grunt.loadNpmTasks('grunt-postcss');
+ 
+};
+Inside that, setup an object named postcss like so:
+
+01
+02
+03
+04
+05
+06
+07
+08
+09
+10
+11
+12
+13
+module.exports = function(grunt) {
+ 
+  grunt.initConfig({
+ 
+    postcss: {
+       
+    }
+  
+  });
+ 
+  grunt.loadNpmTasks('grunt-postcss');
+ 
+};
+Inside the new postcss object we’ll add two more nested objects, one named options and one named dist:
+
+01
+02
+03
+04
+05
+06
+07
+08
+09
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+module.exports = function(grunt) {
+ 
+  grunt.initConfig({
+ 
+    postcss: {
+ 
+      options: {
+ 
+      },
+      dist: {
+         
+      }
+ 
+    }
+  
+  });
+ 
+  grunt.loadNpmTasks('grunt-postcss');
+ 
+};
+The options object will hold the configuration for PostCSS, and the dist object will hold information on where our CSS files should be read from and written to.
+
+Go ahead now and create a CSS file named “style.css” in your project’s “src” folder. Add some test code to it, such as:
+
+1
+2
+3
+.test {
+    background: black;
+}
+Now update the dist object to specify “src/style.css” as our source file, and “dest/style.css” as the file we want to generate:
+
+1
+2
+3
+4
+dist: {
+  src: 'src/style.css',
+  dest: 'dest/style.css'
+}
+Then, inside the options object, add an empty array named processors. This is where we’ll configure PostCSS plugins for use a little later. For now, just update it to:
+
+1
+2
+3
+4
+options: {
+  processors: [
+  ]
+},
+Run a Test Compile
+Your basic postcss task is now ready to go. To test it out, with your terminal/command prompt still pointed at your project folder, run the command:
+
+1
+grunt postcss
+In your terminal you should see this message:
+
+1
+2
+Running "postcss:dist" (postcss) task
+>> 1 processed stylesheet created.
+And now in your “dest” folder you should find a new “style.css” file, containing the same code as the “style.css” file in your “src” folder.
+
+Add PostCSS Plugins
+
+Next we’ll add a selection of PostCSS plugins and packs: Autoprefixer (adds vendor prefix), cssnext (enables future syntax) and precss (extends with Sass like functionality).
+
+Run the following commands to install each one into your project:
+
+1
+2
+3
+npm install autoprefixer --save-dev
+npm install cssnext --save-dev
+npm install precss --save-dev
+Note: The cssnext and precss installations may take a little while as they are packs of multiple plugins.
+
+Now we’re ready to load each of the plugins via the processors array we created earlier. Update that array to the following:
+
+1
+2
+3
+4
+5
+processors: [
+  require('autoprefixer')(),
+  require('cssnext')(),
+  require('precss')()
+]
+Let’s go ahead now add some test code to our source “style.css” file and check that our newly setup PostCSS plugins are working as expected. 
+
+Delete what you already have in the file and add this CSS instead:
+
+01
+02
+03
+04
+05
+06
+07
+08
+09
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+/* Testing autoprefixer */
+ 
+.autoprefixer {
+  display: flex;
+}
+ 
+/* Testing cssnext */
+ 
+.cssnext {
+  background: color(red alpha(-10%));
+}
+ 
+/* Testing precss */
+ 
+.precss {
+  @if 3 < 5 {
+    background: green;
+  }
+  @else {
+    background: blue;
+  }
+}
+Run the grunt postcss command again now, and the resulting file in your “dest” folder should have the following content:
+
+01
+02
+03
+04
+05
+06
+07
+08
+09
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+/* Testing autoprefixer */
+ 
+.autoprefixer {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: flex;
+}
+ 
+/* Testing cssnext */
+ 
+.cssnext {
+  background: rgba(255, 0, 0, 0.9);
+}
+ 
+/* Testing precss */
+ 
+.precss {
+  background: green
+}
+You’ll see in the .autoprefixer class, vendor prefixes have been added by Autoprefixer. In the .cssnext class, an rgba() color has been generated by cssnext. And finally in the .precss class, the @if @else conditional has been evaluated by PreCSS.
+
+Setting Plugin Options
+Note, if you want configure options for a plugin, pass your options through the second pair of brackets after the require() function for that plugin. For example, you might specify the browser list you want Autoprefixer to work off, like so:
+
+1
+2
+3
+4
+5
+processors: [
+  require('autoprefixer')({browsers: ['last 1 version']}),
+  require('cssnext')(),
+  require('precss')()
+]
+Sharing Your Project
+
+The beauty of PostCSS is in its ability to be configured with any combination of plugins. The challenge this brings forward, however, is ensuring that other people who wish to work on a project have the same setup of PostCSS plugins. Thanks to npm, this challenge is handled through its system of dependency management.
+
+Because you are using the --save-dev flag every time you install a plugin into your project, it will be added to your “project.json” file as a dev dependency. This means if you want to share your project with others, they can run the command npm install on the package you share with them and have all the same plugins automatically installed.
+
+To learn more about how dependency management works with NPM check out the tutorial The Command Line for Web Design: Taming 3rd Party Packages.
+
+
+Advertisement
+Let’s Recap
+
+In summary of everything covered above:
+
+Create an npm project with Grunt installed and a Gruntfile inside
+Install the grunt-postcss plugin
+Setup your Gruntfile shell, loading grunt-postcss with grunt.loadNpmTasks('grunt-postcss');
+Create a grunt task to compile your CSS
+Within the task, setup an options object containing a processors array
+Also within the task, setup a dist object specifying your source files and the destination for compiled files
+From there, you can follow the same essential steps to enable any PostCSS plugin in your project:
+
+Install the plugin into your project with 
+npm install <plugin_name> --save-dev
+Add that variable name into your preprocessors array using the require() function 
+require('<plugin_name>')().
+Check out the Github repo for starter files and completed examples.
+
+Up Next: Exploring Plugins
+
+Now you know how to use either Gulp or Grunt to use PostCSS with any plugins you choose. The next thing you need is a way explore the PostCSS plugin ecosystem and find great plugins that are perfect for the kind of projects you want to create.
+
+We’ll go through exactly how you can do that in the next tutorial; “Quickstart Guide: Exploring Plugins”.
+
+</pre>
+</body>
+</html>

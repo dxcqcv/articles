@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="author" content="子烨">
+    <meta name="description" content="">
+    <title>5个实用的jQuery代码片段</title>
+    <link rel="stylesheet" href="css/global.css" media="all">
+</head>
+<body>
+<a href="http://www.imooc.com/article/2076">the link of articles</a><br>
+
+<pre>
+jQuery是一个兼容多浏览器的javascript库，核心理念是write less,do more(写得更少,做得更多)。jQuery使用户能更方便地处理HTML（标准通用标记语言下的一个应用）、事件、实现动画效果，并且方便地为网站提供AJAX交互。javaScript还有一个比较大的优势是，它的文档说明很全，而且各种应用也说得很详细，同时还有许多成熟的插件可供选择，下面给大家推荐几款常用的jQuery代码。
+
+1、管理搜索框的值
+现在各大网站都有搜索输入框，而输入框通常都有默认值，当输入框获取信息时，那么默认值就会消失；而一旦输入框失去信息，并且没有输入新的值，那么输入框就会恢复成默认值，但如果往输入框里输入了新值，那么输入框的值就是新输入的值。这种特效用javascript很容易实现：
+
+$("#searchbox")
+   .focus(function(){$(this).val('')})
+   .blur(function(){
+       var $this = $(this);
+      // '请搜索...'为搜索框默认值
+      ($this.val() === '')? $this.val('请搜索...') : null;
+ });
+2、反序访问jQuery对象里的元素
+在某些场景下，我们可能需要通过jQuery选择器来反序访问页面获到的元素，这个怎么实现呢？看下面代码：
+
+//要掌握jQuery对象的get方法以及数组的reverse方法即可
+var arr = $('#nav').find('li').get().reverse();
+$.each(arr,function(index,ele){
+     .... ...
+ });
+3、复制table header到表格的最下面
+为了让table具有更好的可读性，我们可以将表格的header信息复制一份到表格的底部，这种特效通过jQuery就很容易实现：
+
+var $tfoot = $('');
+$($('thead').clone(true, true).children().get().reverse()).each(function(){
+    $tfoot.append($(this));
+});
+$tfoot.insertAfter('table thead');
+4、使用jQuery重绘图片的大小
+关于图片大小的重绘，你可以在服务端来实现，也可以通过jQuery在客户端实现。
+
+$(window).bind("load", function() {
+     // IMAGE RESIZE
+     $('#product_cat_list img').each(function() {
+          var maxWidth = 120;
+          var maxHeight = 120;
+          var ratio = 0;
+          var width = $(this).width();
+          var height = $(this).height();
+
+          if(width > maxWidth){
+           ratio = maxWidth / width;
+           $(this).css("width", maxWidth);
+           $(this).css("height", height * ratio);
+           height = height * ratio;
+          }
+          var width = $(this).width();
+          var height = $(this).height();
+          if(height > maxHeight){
+           ratio = maxHeight / height;
+           $(this).css("height", maxHeight);
+           $(this).css("width", width * ratio);
+           width = width * ratio;
+          }
+     });
+     //$("#contentpage img").show();
+     // IMAGE RESIZE
+});
+5、用滚动加载动态页面的内容
+有些网站的网页内容不是一次性加载完毕的，而是在鼠标向下滚动时动态加载的，这是怎么做到的呢？看下面代码：
+
+var loading = false;
+$(window).scroll(function(){
+ if((($(window).scrollTop()+$(window).height())+250)>=$(document).height()){
+      if(loading == false){
+           loading = true;
+           $('#loadingbar').css("display","block");
+           $.get("load.php?start="+$('#loaded_max').val(), function(loaded){
+                $('body').append(loaded);
+                $('#loaded_max').val(parseInt($('#loaded_max').val())+50);
+                $('#loadingbar').css("display","none");
+                loading = false;
+           });
+      }
+ }
+});
+
+$(document).ready(function() {
+ $('#loaded_max').val(50);
+});
+
+</pre>
+</body>
+</html>

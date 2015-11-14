@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="author" content="Kezz Bracey">
+    <meta name="description" content="">
+    <title>The Command Line for Web Design: Automation with Gulp</title>
+    <link rel="stylesheet" href="css/global.css" media="all">
+</head>
+<body>
+<a href="http://webdesign.tutsplus.com/tutorials/the-command-line-for-web-design-automation-with-gulp--cms-23642">the link of articles</a><br>
+
+<pre>
+This post is part of a series called The Command Line for Web Design.
+The Command Line for Web Design: Automation with Grunt
+The Command Line for Web Design: Live Reload & BrowserSync
+In the previous tutorial we setup a project and used Grunt to watch and automatically compile Stylus and Jade. In this tutorial we’ll be doing the same, but using a different task runner: Gulp.
+
+Getting Started with Gulp
+
+<img src="img/automation-with-gulp/aGulp01.png" alt="" />
+
+Install Gulp
+Install Gulp globally with:
+
+1
+[sudo] npm install gulp -g
+Setup Project for Gulp
+Add package.json file
+
+As with the Grunt process, add a “package.json” file to your project using the npm init command.
+
+Install Gulp Package
+
+Install Gulp into your project and save it as a development dependency with:
+
+1
+npm install gulp --save-dev
+Add gulpfile.js
+
+In a parallel to Grunt’s “Gruntfile”, Gulp uses a “Gulpfile”. To the root folder of your “Gulp Project” add a file named “gulpfile.js”.
+
+To get started, we’ll give the file access to the “gulp” package you just installed into your “node_modules” folder, by adding this line to the top of your Gulpfile:
+
+1
+var gulp = require('gulp');
+Install Gulp Plugins
+Strictly speaking, Gulp doesn’t actually need to use Gulp plugins because it can actually make use of vanilla npm packages. However, there are several plugins available that are specifically optimized for use with Gulp, and when you’re starting out you’ll find these easier to use.
+
+Search for Gulp plugins at: http://gulpjs.com/plugins/
+
+<img src="img/automation-with-gulp/aGulp02.png" alt="" />
+
+We’ll be installing these plugins:
+
+https://www.npmjs.com/package/gulp-stylus
+https://www.npmjs.com/package/gulp-autoprefixer/
+https://www.npmjs.com/package/gulp-minify-css/
+https://www.npmjs.com/package/gulp-jade/
+https://www.npmjs.com/package/gulp-jade/
+https://www.npmjs.com/package/gulp-concat
+These plugins perform essentially the same roles as those we used with Grunt, with a couple of differences.
+
+One, we don’t need to install a “watch” plugin as Gulp has one built in.
+
+Two, we’re installing the “gulp-concat” plugin in order to pull all our files together (concatenate them) before we minify the whole lot. Thanks to Dan for pointing this out!
+
+Note: we’re using a plugin named “gulp-minify-css” but it employs the same “clean-css” package you’ve used so far.
+
+With your terminal pointed at your “Gulp Project” folder run each of these commands:
+
+1
+npm install gulp-stylus --save-dev
+1
+npm install gulp-autoprefixer --save-dev
+1
+npm install gulp-minify-css --save-dev
+1
+npm install gulp-jade --save-dev
+1
+npm install gulp-uglify --save-dev
+1
+npm install gulp-concat --save-dev<br>
+When you’re done, you should see these folders inside your project’s “node_modules” folder:
+
+<img src="img/automation-with-gulp/aGulp03.png" alt="" />
+
+More or less..
+Enable Plugins via Gulpfile
+Just as we did with Grunt, we need to enable each of the plugins, this time in our Gulpfile. Instead of Grunt’s method grunt.loadNpmTasks, we’ll be using the require function native to NodeJS.
+
+Add these lines to your Gulpfile, below the line you already added.
+
+1
+2
+3
+4
+5
+6
+7
+var stylus = require('gulp-stylus');
+var autoprefixer = require('gulp-autoprefixer');
+var minifyCSS = require('gulp-minify-css');
+var jade = require('gulp-jade');
+var uglify = require('gulp-uglify');
+var rename = require('gulp-rename');
+var concat = require('gulp-concat');
+This approach is different to Grunt in that we don’t yet have any commands registered that can be run at this stage. Rather, we’ve just created JavaScript variables, each representing our plugins, that we can employ later in our Gulpfile.
+
+Configure & Run Tasks in Gulpfile
+One of the main differences between Grunt and Gulp is that with Gulp you don’t need to individually configure a task for every plugin you’re using in your project. Instead, you only configure tasks for the actual commands you want to run.
+
+Stylus, Autoprefixer & minifyCSS
+
+In our Gruntfile earlier we setup a separate task each for Stylus, Autoprefixer and clean-css. In our Gulpfile we don’t need to do this. We know that every time we compile our Stylus code we want the resulting CSS to be autoprefixed and minified, so instead we’ll create one single task to do all these things at once.
+
+Add this code to the bottom of your Gulpfile:
+
+1
+2
+3
+4
+5
+6
+7
+8
+gulp.task('css', function () {
+    gulp.src('source/stylus/main.styl')
+        .pipe(stylus({compress: false, paths: ['source/stylus']}))
+        .pipe(autoprefixer())
+        .pipe(minifyCSS())
+        .pipe(rename('style.css'))
+        .pipe(gulp.dest('build'))
+});
+Let’s break down what we’ve done.
+
+First, we’re using gulp.task() to define a new task named css, and making some space for a JavaScript function that will be run whenever we run the command gulp css:
+
+1
+2
+3
+gulp.task('css', function () {
+ 
+});
+Next, we’re using gulp.src() to set the source file we want to process to “source/stylus/main.styl” file:
+
+1
+2
+3
+4
+gulp.task('css', function () {
+    gulp.src('source/stylus/main.styl')
+ 
+});
+Then, we start using Gulp’s pipe() function to call on each of our plugins. The waypipe() works is like physical pipes, where you feed something into the first pipe and it then passes through every connected pipe.
+
+Our first "pipe" adds Stylus compilation, using the same compress and paths options as we did when working with Grunt earlier:
+
+1
+2
+3
+4
+5
+gulp.task('css', function () {
+    gulp.src('source/stylus/main.styl')
+        .pipe(stylus({compress: false, paths: ['source/stylus']}))
+ 
+});
+We then connect a second pipe, which takes the compiled code and adds autoprefixing:
+
+1
+2
+3
+4
+5
+6
+gulp.task('css', function () {
+    gulp.src('source/stylus/main.styl')
+        .pipe(stylus({compress: false, paths: ['source/stylus']}))
+        .pipe(autoprefixer())
+ 
+});
+We connect a third pipe, taking our prefixed CSS and cleaning it:
+
+1
+2
+3
+4
+5
+6
+7
+gulp.task('css', function () {
+    gulp.src('source/stylus/main.styl')
+        .pipe(stylus({compress: false, paths: ['source/stylus']}))
+        .pipe(autoprefixer())
+        .pipe(minifyCSS())
+ 
+});
+At this point if we were to output a CSS file it would be named “main.css” to correspond with the source “main.styl” file we began with. So we’ll connect a fourth pipe to rename the file we’re going to end up with to “style.css”:
+
+1
+2
+3
+4
+5
+6
+7
+8
+gulp.task('css', function () {
+    gulp.src('source/stylus/main.styl')
+        .pipe(stylus({compress: false, paths: ['source/stylus']}))
+        .pipe(autoprefixer())
+        .pipe(minifyCSS())
+        .pipe(rename('style.css'))
+ 
+});
+Finally, we connect our fifth and last pipe to send our finished CSS file to its destination, using gulp.dest() to set our output folder to be “build”.
+
+1
+2
+3
+4
+5
+6
+7
+8
+gulp.task('css', function () {
+    gulp.src('source/stylus/main.styl')
+        .pipe(stylus({compress: false, paths: ['source/stylus']}))
+        .pipe(autoprefixer())
+        .pipe(minifyCSS())
+        .pipe(rename('style.css'))
+        .pipe(gulp.dest('build'))
+});
+Now the css task you just created is ready to go. In your project root folder run:
+
+1
+gulp css
+...and your Stylus file will be compiled, autoprefixed and cleaned then output to your “build” folder as “style.css”.
+
+Jade
+
+We’ll use the same process again to setup our task for Jade compilation. We’ll create a task named html, set it to use all the “.jade” files in the “source/jade” folder as its source, pipe through Jade compilation, then send the resulting HTML file(s) to our “build” folder.
+
+Add this code below the css task you just created:
+
+1
+2
+3
+4
+5
+gulp.task('html', function() {
+  gulp.src('source/jade/*.jade')
+    .pipe(jade())
+    .pipe(gulp.dest('build'))
+});
+Run your new task with the command:
+
+1
+gulp html
+...and you’ll see each of your Jade files compiled into corresponding HTML files in your “build” folder.
+
+Uglify
+
+Now we’re going to use the same approach one more time, setting up a task named js to take the jQuery and Modernizr files from our “bower_components” folder, uglify (concatenate and minify) them, then output the code as a file named “output.min.js” to our “build” folder.
+
+1
+2
+3
+4
+5
+6
+7
+8
+9
+gulp.task('js', function() {
+  gulp.src([
+    'bower_components/jquery/dist/jquery.js',
+    'bower_components/modernizr/modernizr.js'
+  ])
+    .pipe( concat('output.min.js') ) // concat pulls all our files together before minifying them
+    .pipe(uglify())
+    .pipe(gulp.dest('build'))
+});
+Note: in this case we want to specify two source files, so we are passing the two file names as an array, i.e. comma separated values between square brackets.
+
+Run your js task with the command
+
+1
+gulp js
+...and you’ll see a new file named “output.min.js” appear in your “build” folder, containing jQuery and Modernizr in minified form.
+
+Add a “watch” Task
+Now that we have our custom css and html tasks setup, we can use Gulp’s in builtgulp.watch() function so they’ll automatically run for us.
+
+Add this code to the bottom of your Gulpfile to create a watch task:
+
+1
+2
+3
+4
+gulp.task('watch', function () {
+   gulp.watch('source/stylus/*.styl', ['css']);
+   gulp.watch('source/jade/*.jade', ['html']);
+});
+The first use of gulp.watch() sets the css task to be run whenever a “.styl” file inside the “source/stylus” folder is changed.
+
+The second use of gulp.watch() sets the html task to be run whenever a “.jade” file inside the “source/jade” folder is changed.
+
+Run your watch task with the command
+
+1
+gulp watch
+...and whenever you save changes to one of your Stylus or Jade files your compilation will be handled automatically.
+
+
+Advertisement
+Add “default” Task
+Just as we did with our Grunt project, we’ll wrap up by creating a default task that will run whenever we use the command gulp by itself.
+
+Add this line to the bottom of your Gulpfile:
+
+1
+gulp.task('default', ['css', 'html', 'js']);
+We’re using this task to build our whole project, including the JavaScript, by having it run the css, html and js tasks.
+
+To build your entire project with the default task use the command:
+
+1
+gulp
+In the Next Tutorial
+
+Coming up next we’ll add the finishing touch to your Grunt and Gulp projects that really will make them ultimate efficiency machines, and that is live reloading and browser synchronization.
+
+You’ll learn how to create a command that launches your project on a localhost preview, i.e. simulating a web host on your local machine using an http:// protocol instead of afile:// protocol to preview your site.
+
+And as your project source files are watched for changes and automatically compiled, your localhost preview will automatically be reloaded so that right after you save your changes you’ll see them reflected in the browser.
+
+We’ll then also setup your localhost preview so that every browser you view it in will be synchronized, including browsers on different devices on the same internet connection such as tablets and phones. Open a menu in one browser, see how it responds in every other browser and device at the same time.
+
+I’ll see you in the next tutorial!
+
+</pre>
+</body>
+</html>

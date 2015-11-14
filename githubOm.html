@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="author" content="swannodette">
+    <meta name="description" content="">
+    <title>ClojureScript interface to Facebook's React</title>
+    <link rel="stylesheet" href="css/global.css" media="all">
+</head>
+<body>
+<a href="https://github.com/omcljs/om">the link of articles</a><br>
+
+<pre>
+Om
+A ClojureScript interface to Facebook's React.
+
+Om allows users to represent their UIs simply as EDN. Because ClojureScript data is immutable data, Om can always rapidly re-render the UI from the root. Thus Om UIs are out of the box snapshotable and undoable and these operations have no implementation complexity and little overhead.
+
+See for yourself.
+
+Unique Features
+
+Om supports features not currently present in React:
+
+Global state management facilities built in
+Components may have arbitrary data dependencies, not limited to props & state
+Component construction can be intercepted via :instrument. Simplifies debugging components and generic editors.
+Provides stream of all application state change deltas via :tx-listen. Simplifies synchronization online and offline.
+Customizable semantics. Fine grained control over how components store state, even for components outside of your control. Simplifies using Om components outside the Om framework, debugging, and adding event hooks not anticipated by original component designer.
+Tutorials
+
+There is an in-depth tutorial that will introduce you to the core concepts of Om here and a real-world integration example here. The community maintained om-cookbook covers many common idioms and patterns.
+
+Examples
+
+(ns example
+  (:require [om.core :as om]
+            [om.dom :as dom]))
+
+(defn widget [data owner]
+  (reify
+    om/IRender
+    (render [this]
+      (dom/h1 nil (:text data)))))
+
+(om/root widget {:text "Hello world!"}
+  {:target (. js/document (getElementById "my-app"))})
+The repo includes several simple examples you can build yourself. If you view the project.clj you will see their build identifiers. Assuming you have Leiningen installed, to build an example run:
+
+lein cljsbuild once <build-id>
+Then open the corresponding index.html in your favorite browser.
+
+For a more fleshed-out example, please see the Om implementation of TodoMVC exists here.
+
+Documentation
+
+There is documentation here.
+
+There is also a conceptual overview that we recommend reading as there are some design choices in Om that make it quite different from other client side solutions and even React itself.
+
+Reusable Components
+
+Om emphasizes building modular and adaptable components. Some examples:
+
+om-bootstrap, Bootstrap 3 Om Components
+ankha, an EDN inspector view
+om-draggable, generic draggable
+om-autocomplete, customizable autocompleter
+ff-om-draggable
+om-widgets
+om-dev-component, add dev features (e.g. state history navigation) to your component
+om-sync, keep client and server in sync (experimental)
+Applications built with Om
+
+Project FiFo, a SmartOS cloud orchestration platform
+Recurse Center Community
+Framed
+Netrunner
+CircleCI, source here
+Prismatic
+Precursor
+Assistant
+Fitsme
+Goya, pixel editor with undo/redo and visual history
+Coils, a Clojure web framework
+wordsmith, a markdown editor
+omchaya
+BVCA Private Equity Map
+session
+pOModoro
+Dakait, a web-based tool to manage downloads
+Mega Super Mario World, a detailed review of the classic video game and a SNES video editor
+Time for Coffee!, a handy website to display the next departures at public transport stops in Switzerland
+Omingard, a Solitaire-like card game. Making-of: My Way into Clojure.
+Horizon Alpha, a quick Hack and slash game using the Noob universe
+Solari Architects, portfolio for architecture firm.
+Using it
+
+The current version depends on React 0.13.3.
+
+Make sure you have Leiningen installed.
+
+Your project.clj should include something like the following:
+
+(defproject foo "0.1.0"
+  ...
+  :dependencies [[org.clojure/clojure "1.6.0"]
+                 [org.clojure/clojurescript "0.0-2760"]
+                 [org.omcljs/om "0.9.0"]]
+  ...)
+React with Add-Ons
+
+If you would rather use React with Add-Ons you can configure this with Maven's exclusions feature:
+
+(defproject foo "0.1.0"
+  ...
+  :dependencies [[org.clojure/clojure "1.6.0"]
+                 [org.clojure/clojurescript "0.0-2760"]
+                 [org.omcljs/om "0.9.0" :exclusions [cljsjs/react]]
+                 [cljsjs/react-with-addons "0.13.3-0"]]
+  ...)
+Build configuration
+
+For local development your lein-cljsbuild settings should look something like this:
+
+:cljsbuild {
+  :builds [{:id "dev"
+            :source-paths ["src"]
+            :compiler {
+              :main main.core
+              :output-to "main.js"
+              :output-dir "out"
+              :optimizations :none
+              :source-map true}}]}
+Your markup should look something like the following:
+
+<html>
+    <body>
+       <div id="my-app"></div>
+       <script src="main.js" type="text/javascript"></script>
+    </body>
+</html>
+For production your lein-cljsbuild settings should look something like this:
+
+:cljsbuild {
+  :builds [{:id "release"
+            :source-paths ["src"]
+            :compiler {
+              :main main.core
+              :output-to "main.js"
+              :optimizations :advanced
+              :pretty-print false}}]}
+Contributing
+
+Please contact me via email to request an electronic Contributor Agreement. Once your electronic CA has been signed and returned to me I will accept pull requests.
+
+FAQ
+
+Can I use a different HTML Syntax?
+
+Om is not opinionated about HTML syntax, third parties can provide the preferred flavors over the React.DOM api. Alternative syntaxes will be listed here:
+
+sablono, Hiccup-style
+kioo, Enlive-style
+Does Om provide routing?
+
+Om does not ship with a router and is unlikely to. However ClojureScript routing libraries exist that handle this problem quite well:
+
+secretary
+silk
+bidi
+How do I test Om programs?
+
+Sean Grove's omchaya is a good starting point for understanding common testing patterns
+There are some notes here
+References
+
+Worlds: Controlling the Scope of Side Effects
+A Functional I/O System
+Directness and Liveness in the Morphic User Interface Construction Environment
+Learnable Programming
+Copyright and license
+
+Copyright © 2013-2015 David Nolen
+
+Licensed under the EPL (see the file epl.html).
+
+</pre>
+</body>
+</html>

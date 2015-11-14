@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="author" content="Alexey Migutsky">
+    <meta name="description" content="">
+    <title>How To Pick a Frontend Web Framework</title>
+    <link rel="stylesheet" href="css/global.css" media="all">
+</head>
+<body>
+<a href="http://www.fse.guru/how-to-pick-a-frontend-web-framework">the link of articles</a><br>
+
+<pre>
+Intro
+
+Hello, fellow developer!
+
+Below you will find a highly opinionated list of tools and frameworks.
+
+Fear not!
+
+You can pick any option you feel confident with, or just ignore all of them and come up with your own setup.
+
+This article is supposed to help you get your head around an overwhelming amount of tools we have in Frontend Community.
+
+Also, there is a checklist, which may help you pick up the thing you need.
+
+Do you use it yourself?
+
+Yes, I use this as a reminder for myself on how to assess the setup I need.
+
+Also, this is a place where I send people who ask me "What framework should I use?"
+
+Because, you know, there is no definitely right or wrong answer. 
+But there's a thought framework you can use to make your choice easier.
+
+Also, I do update this article. Because I learn and change my mind sometimes.
+
+Silvrback blog image
+ And because there were 37 new javascript libraries released by the time you get here reading this article.
+What do I start with?
+
+If you are not building something really tiny and throw-away, then you need these things:
+
+Modular structure for your project.
+
+I personally would prefer Component-based architecture. It is applicable to various frameworks.
+
+Also, consider some extreme cases, like BOT or Elm Architecture or re-frame or CycleJS.
+
+Module loader/bundler (RequireJS, Browserify, Webpack, ComponentJS, SystemJS)
+
+These things will help you keep your javascript (or components) separated and manageable.
+
+Package manager (npm, jspm, bower).
+
+I'd prefer npm to any other all the time - its a de-facto standard in javascript and nodejs world. And I consider bower to be a hack - its a nice way to download the assets, but it is not really as powerful as npm in managing components and dependencies. YMMV.
+
+Automated asset/compilation/build pipeline (grunt/gulp/broccoli).
+
+Because, you know, live is to short to do the same stuff again and again and again.
+
+Silvrback blog image
+
+CSS preprocessors (jss/stylus/sass/css-modules) and postprocessors (csso, autoprefixer, postcss)
+
+This tools will make CSS a bit better and remove some burden of managing cross-browser issues. Yes, I know that it is 2015, but anyway, its still pain in the ass.
+
+Markup framework (Bootstrap, Zurb Foundation, Elemental UI, Material Lite)
+
+This things incorporate tons of lnowledge and 1000 years of suffering of web developers. They would help you deal with basic markup and styles.
+
+Though, you may consider build your own solution, if you feel like markup hero and frontend expert. Or you need to establish a design dictionary for your company.
+
+In this case, I'd suggest you to pick up the methodology (BEM, OOCSS) as soon as possible. It would save your time.
+
+I personally prefer BEM naming scheme and custom workflow. You can find some thoughts behind this in the styleguide for Brainly.com which I help to build.
+
+If you do not where to start building your custom markup methodology, have a look at HTML5 Boilerplate
+
+Test runner (jasmine, karma, mocha, tape, intern).
+
+Everyone need tests. No exceptions.
+
+Code quality assurance tools (eslint, husky, editorconfig).
+
+You do not want your code become a mess, do you?
+
+Any community to get help from (chats, IRC, meetups, twitter).
+
+Ok, what's next?
+
+Here comes a set of high-level questions you need to figure out before starting picking up your tools and delivering problem-solving gems.
+
+Are you ready?
+
+Silvrback blog image
+
+Do I need to work with other people on the project? Who are they and what do they want?
+The answer will help you pick the language and workflow, which will be helpful and beneficial both for you and for your company.
+
+What do I focus most on - quality, development speed, maintainability?
+Here you can define whether you can experiment and fail to validate your choice of tools.
+
+Do I need to hand over my code to the 3rd party?
+Realizing this may limit a choice of technologies to most preferred by the community you are targeting.
+
+Am I dealing with the Core product or satellites?
+If you are dealing with the core product, prefer well-established technologies and frameworks. It's safer and can buy you more sleep.
+
+Is it an interactive app or more like a static documents?
+It may turn out that all you need is just some HTML + CSS + tools around and a static site generator or CMS.
+
+Is it a single project or a family of related projects?
+You may go with components and style guide even if you have a set of projects, which are static documents.
+Just to reduce code reuse overhead and to establish consistency.
+Also, consider SEO and server-side rendering in this case!
+
+Language Checklist
+
+When you have answered those high-level questions, it's a good time to talk to your teammates and pick up a language!
+
+Because there are more things than this insane javascript, which you can consider.
+
+Silvrback blog image
+
+Do you have a team of JS-developers?
+Consider using ES6 (with babel).
+It will make your life a bit easier.
+
+Do you prefer typed languages? Are you fellows ok with types?
+Consider typescript.
+
+Are you all OK with functional programming?
+You can start small with ES6 and libraries like lo-dash or ramda. There is a couple of good tutorials and books to help you get started on this cool journey!
+
+Have you tried functional JS and wanna get more nice things?
+Try elm. It's awesome!
+
+Are you more like a full stack guys?
+Try clojurescript. It's awesome too!
+
+Do you like Scala already?
+Try scalaJs.
+
+Do you know and like Haskell?
+Try purescript. No idea how cool it is :)
+
+Wanna go crazy?
+Here is a list of languages that compile to javascript. Pick anything and have fun.
+
+Framework Checklist
+
+Silvrback blog image
+
+Do you need just a basic working app? No time for "complex stuff"?
+Try angular. Start looking for help immediately.
+
+Do you need to prototype fast and often? Are you ok with some maintainability problems in the future?
+Try angular. Get ready for problems.
+
+Are you backend guys trying to build some frontend cause there's no choice?
+Try angular. Start looking for a frontend developer.
+
+Do you need to start fast and build fast, but with some missing features you need to bring with you?
+Try ampersand/backbone + (pick your libraries to fit the context)
+
+The same settings, medium to large app?
+Add marionette/chaplin to your backbone and consider using ReactJs
+
+Do you have some time for experiments, but with later performance gain?
+Try mithril/knockout/aurelia + (pick your libraries to fit the context)
+
+Do you have good frontend experience in general and basic familiarity with Functional Programming?
+Try ReactJS + redux + ImmutableJS + (pick your libraries to fit the context)
+
+More functional programming skillz? Or crazily interactive app?
+Add reactive streams (bacon, rxJS) or try Cycle.js (!experimental)
+
+Note 0: it may be a good idea to add streams anyway and teach others to use it.
+Note 1: please, do not confuse reactive streams with FRP.
+
+Do you want to use rigid rules and common best practices? Your app will grow big? You plan to grow your team, possibly with jr. devs? You have some time to invest in learning?
+Invest some time in EmberJS. It's a good investment!
+
+Do you need to have the "desktop-like" app? Your app will have tables, charts, other analytical stuff? Are you building enterprise stuff?
+Try ExtJS.
+
+Are you a studio building things for other people?
+You should have a preferred toolset already.
+
+Anyway, build your own stuff based on your most common use cases.
+
+Are you a freelancer building some stuff for others?
+Adapt to their choice/requirements.
+
+Try angular. It will not hurt so much. Let other people suffer if they want.
+
+Note: You cannot change your customer if he does not pay you for that!
+
+Are you trying to build an appealing custom product, that will be used by other people?
+Tailor the framework for the precise needs starting with anything from the list above.
+
+You have a precise knowledge of the app you want to get (e.g. mobile app with 10 screens)
+Get two weeks experimenting with specialized stuff (ionic, famous, Sencha Touch)
+
+How do I start coding?
+
+Spend some time to read documentation for the framework and tools you picked up.
+Ask senior people in the community for a good project starter.
+Set up all the tools.
+Hack. But I'd suggest engineering instead.
+...
+PROFIT!1
+No idea how to start with this weird framework I have suggested?
+Have a look at TodoMVC Examples and find the example with the framework of your choice.
+
+But bear in mind, that those projects are only examples. In most cases they will not scale to medium/large apps.
+
+I do not want to decide, tell me what to do!
+
+Ok, ok, calm down.
+
+If you do not want to decide, then either stick to EmberJS, or if you feel bold, take ReactJs + Redux + ES6 + webpack + npm + jss + autoprefixer + eslint + Elemental UI + karma. And read this!
+
+That's it. Don't ask why. Just start using something and build your stuff!
+
+I can see a lot of ReactJS mentions. Why is that?
+
+It is a future of web development.
+Here is a very good article explaining all the stuff.
+
+Also, awesome people are using it.
+You should definitely try it out on some project.
+It would be fun, I guarantee!
+
+If it won't, you can come back to this article anytime and **post your rants in the comments below.
+
+Have a happy hacking!
+
+Make sure to check out amazing comments on Hacker News.
+
+If you are interested in more in-depth overview of what is it to be a Front-End Engineer, have a look at this online book.
+
+If you like this article, consider subscribing to my blog by clicking subscribe button under the title of this article.
+
+Alexey Migutsky –
+
+Software Engineer. I use magic to make IT things work and keep people happy.
+
+</pre>
+</body>
+</html>

@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="author" content="Jeremy Keith">
+    <meta name="description" content="">
+    <title>My first Service Worker</title>
+    <link rel="stylesheet" href="css/global.css" media="all">
+</head>
+<body>
+<a href="https://adactio.com/journal/9775">the link of articles</a><br>
+
+<pre>
+I’ve made no secret of the fact that I’m really excited about Service Workers. I’m not alone. At the Coldfront conference in Copenhagen, pretty much every talk mentioned Service Workers.
+Obviously I’m excited about what Service Workers enable: offline caching, background processes, push notifications, and all sorts of other goodies that allow the web to compete with native. But more than that, I’m really excited about the way that the Service Worker spec has been designed. Instead of being an all-or-nothing technology that you have to bet the farm on, it has been deliberately crafted to be used as an enhancement on top of existing sites (oh, how I wish that web components would follow a similar path).
+I’ve got plenty of ideas on how Service Workers could be used to enhance a community site like The Session or the kind of events sites that we produce at Clearleft, but to begin with, I figured it would make sense to use my own personal site as a playground.
+To start with, I’ve already conquered the first hurdle: serving my site over HTTPS. Service Workers require a secure connection. But you can play around with running a Service Worker locally if you run a copy of your site on localhost.
+That’s how I started experimenting with Service Workers: serving on localhost, and stopping and starting my local Apache server with apachectl stop and apachectl start on the command line.
+That reminds of another interesting use case for Service Workers: it’s not just about the user’s network connection failing (say, going into a train tunnel); it’s also about your web server not always being available. Both scenarios are covered equally.
+I would never have even attempted to start if it weren’t for the existing examples from people who have been generous enough to share their work:
+The Guardian Developer Blog documents how they provide an offline page.
+Nicolas documented how he set up a Service Worker for his site.
+Jake put together an offline cookbook covering the many ways that Service Workers can be used.
+Also, I knew that Jake was coming to FF Conf so if I got stumped, I could pester him. That’s exactly what ended up happening (thanks, Jake!).
+So if you decide to play around with Service Workers, please, please share your experience.
+It’s entirely up to you how you use Service Workers. I figured for a personal site like this, it would be nice to:
+Explicitly cache resources like CSS, JavaScript, and some images.
+Cache the homepage so it can be displayed even when the network connection fails.
+For other pages, have a fallback “offline” page to display when the network connection fails.
+So now I’ve got a Service Worker up and running on adactio.com. It will only work in Chrome, Android, Opera, and the forthcoming version of Firefox …and that’s just fine. It’s an enhancement. As more and more browsers start supporting it, this Service Worker will become more and more useful.
+How very future friendly!
+The code
+If you’re interested in the nitty-gritty of what my Service Worker is doing, read on. If, on the other hand, code is not your bag, now would be a good time to bow out.
+If you want to jump straight to the finished code, here’s a gist. Feel free to take it, break it, copy it, improve it, or do anything else you want with it.
+To start with, let’s establish exactly what a Service Worker is. I like this definition by Matt Gaunt:
+A service worker is a script that is run by your browser in the background, separate from a web page, opening the door to features which don’t need a web page or user interaction.
+register
+From inside my site’s global JavaScript file—or I could do this from a script element inside my pages—I’m going to do a quick bit of feature detection for Service Workers. If the browser supports it, then I’m going register my Service Worker by pointing to another JavaScript file, which sits at the root of my site:
+if (navigator.serviceWorker) {
+  navigator.serviceWorker.register('/serviceworker.js', {
+    scope: '/'
+  });
+}
+The serviceworker.js file sits in the root of my site so that it can act on any requests to my domain. If I put it somewhere like /js/serviceworker.js, then it would only be able to act on requests to the /js directory.
+Once that file has been loaded, the installation of the Service Worker can begin. That means the script will be installed in the user’s browser …and it will live there even after the user has left my website.
+install
+I’m making the installation of the Service Worker dependent on a function called updateStaticCache that will populate a cache with the files I want to store:
+self.addEventListener('install', function (event) {
+  event.waitUntil(updateStaticCache());
+});
+That updateStaticCache function will be used for storing items in a cache. I’m going to make sure that the cache has a version number in its name, exactly as described in the Guardian’s use case. That way, when I want to update the cache, I only need to update the version number.
+var staticCacheName = 'static';
+var version = 'v1::';
+Here’s the updateStaticCache function that puts the items I want into the cache. I’m storing my JavaScript, my CSS, some images referenced in the CSS, the home page of my site, and a page for displaying when offline.
+function updateStaticCache() {
+  return caches.open(version + staticCacheName)
+    .then(function (cache) {
+      return cache.addAll([
+        '/path/to/javascript.js',
+        '/path/to/stylesheet.css',
+        '/path/to/someimage.png',
+        '/path/to/someotherimage.png',
+        '/',
+        '/offline'
+      ]);
+    });
+};
+Because those items are part of the return statement for the Promise created by caches.open, the Service Worker won’t install until all of those items are in the cache. So you might want to keep them to a minimum.
+You can still put other items in the cache, and not make them part of the return statement. That way, they’ll get added to the cache in their own good time, and the installation of the Service Worker won’t be delayed:
+function updateStaticCache() {
+  return caches.open(version + staticCacheName)
+    .then(function (cache) {
+      cache.addAll([
+        '/path/to/somefile',
+        '/path/to/someotherfile'
+      ]);
+      return cache.addAll([
+        '/path/to/javascript.js',
+        '/path/to/stylesheet.css',
+        '/path/to/someimage.png',
+        '/path/to/someotherimage.png',
+        '/',
+        '/offline'
+      ]);
+    });
+}
+Another option is to use completely different caches, but I’ve decided to just use one cache for now.
+activate
+When the activate event fires, it’s a good opportunity to clean up any caches that are out of date (by looking for anything that doesn’t match the current version number). I copied this straight from Nicolas’s code:
+self.addEventListener('activate', function (event) {
+  event.waitUntil(
+    caches.keys()
+      .then(function (keys) {
+        return Promise.all(keys
+          .filter(function (key) {
+            return key.indexOf(version) !== 0;
+          })
+          .map(function (key) {
+            return caches.delete(key);
+          })
+        );
+      })
+  );
+});
+fetch
+The fetch event is fired every time the browser is going to request a file from my site. The magic of Service Worker is that I can intercept that request before it happens and decide what to do with it:
+self.addEventListener('fetch', function (event) {
+  var request = event.request;
+  ...
+});
+POST requests
+For a start, I’m going to just back off from any requests that aren’t GET requests:
+if (request.method !== 'GET') {
+  event.respondWith(
+      fetch(request, { credentials: 'include' })
+  );
+  return;
+}
+That’s basically just replicating what the browser would do anyway. But even here I could decide to fall back to my offline page if the request doesn’t succeed. I do that using a catch clause appended to the fetch statement:
+if (request.method !== 'GET') {
+  event.respondWith(
+      fetch(request, { credentials: 'include' })
+          .catch(function () {
+              return caches.match('/offline');
+          })
+  );
+  return;
+}
+HTML requests
+I’m going to treat requests for pages differently to requests for files. If the browser is requesting a page, then here’s the order I want:
+Try fetching the page from the network first.
+If that doesn’t work, try looking for the page in the cache.
+If all else fails, show the offline page.
+First of all, I need to test to see if the request is for an HTML document. I’m doing this by sniffing the Accept headers, which probably isn’t the safest method:
+if (request.headers.get('Accept').indexOf('text/html') !== -1) {
+Now I try to fetch the page from the network:
+event.respondWith(
+  fetch(request, { credentials: 'include' })
+);
+If the network is working fine, this will return the response from the site and I’ll pass that along.
+But if that doesn’t work, I’m going to look for a match in the cache. Time for a catch clause:
+.catch(function () {
+  return caches.match(request);
+})
+So now the whole event.respondWith statement looks like this:
+event.respondWith(
+  fetch(request, { credentials: 'include' })
+    .catch(function () {
+      return caches.match(request)
+    })
+);
+Finally, I need to take care of the situation when the page can’t be fetched from the network and it can’t be found in the cache.
+Now, I first tried to do this by adding a catch clause to the caches.match statement, like this:
+return caches.match(request)
+  .catch(function () {
+    return caches.match('/offline');
+  })
+That didn’t work and for the life of me, I couldn’t figure out why. Then Jake set me straight. It turns out that caches.match will always return a response …even if that response is undefined. So a catch clause will never be triggered. Instead I need to return the offline page if the response from the cache is falsey:
+return caches.match(request)
+  .then(function (response) {
+    return response || caches.match('/offline');
+  })
+With that cleared up, my code for handing HTML requests looks like this:
+event.respondWith(
+  fetch(request, { credentials: 'include' })
+    .catch(function () {
+      return caches.match(request)
+        .then(function (response) {
+          return response || caches.match('/offline');
+        })
+    })
+);
+Actually, there’s one more thing I’m doing with HTML requests. If the network request succeeds, I stash the response in the cache.
+Well, that’s not exactly true. I stash a copy of the response in the cache. That’s because you’re only allowed to read the value of a response once. So if I want to do anything with it, I have to clone it:
+var copy = response.clone();
+caches.open(version + staticCacheName)
+  .then(function (cache) {
+    cache.put(request, copy);
+  });
+I do that right before returning the actual response. Here’s how it fits together:
+if (request.headers.get('Accept').indexOf('text/html') !== -1) {
+  event.respondWith(
+    fetch(request, { credentials: 'include' })
+      .then(function (response) {
+        var copy = response.clone();
+        caches.open(version + staticCacheName)
+          .then(function (cache) {
+            cache.put(request, copy);
+          });
+        return response;
+      })
+      .catch(function () {
+        return caches.match(request)
+          .then(function (response) {
+            return response || caches.match('/offline');
+          })
+      })
+  );
+  return;
+}
+Okay. So that’s requests for pages taken care of.
+File requests
+I want to handle requests for files differently to requests for pages. Here’s my list of priorities:
+Look for the file in the cache first.
+If that doesn’t work, make a network request.
+If all else fails, and it’s a request for an image, show a placeholder.
+Step one: try getting the file from the cache:
+event.respondWith(
+  caches.match(request)
+);
+Step two: if that didn’t work, go out to the network. Now remember, I can’t use a catch clause here, because caches.match will always return something: either a response or undefined. So here’s what I do:
+event.respondWith(
+  caches.match(request)
+    .then(function (response) {
+      return response || fetch(request);
+    })
+);
+Now that I’m back to dealing with a fetch statement, I can use a catch clause to take care of the third and final step: if the network request doesn’t succeed, check to see if the request was for an image, and if so, display a placeholder:
+.catch(function () {
+  if (request.headers.get('Accept').indexOf('image') !== -1) {
+    return new Response('<svg>...</svg>',  { headers: { 'Content-Type': 'image/svg+xml' }});
+  }
+})
+I could point to a placeholder image in the cache, but I’ve decided to send an SVG on the fly using a new Response object.
+Here’s how the whole thing looks:
+event.respondWith(
+  caches.match(request)
+    .then(function (response) {
+      return response || fetch(request)
+        .catch(function () {
+          if (request.headers.get('Accept').indexOf('image') !== -1) {
+            return new Response('<svg>...</svg>', { headers: { 'Content-Type': 'image/svg+xml' }});
+          }
+        })
+    })
+);
+The overall shape of my code to handle fetch events now looks like this:
+self.addEventListener('fetch', function (event) {
+  var request = event.request;
+  // Non-GET requests
+  if (request.method !== 'GET') {
+    event.respondWith(
+      ... 
+    );
+    return;
+  }
+  // HTML requests
+  if (request.headers.get('Accept').indexOf('text/html') !== -1) {
+    event.respondWith(
+      ...
+    );
+    return;
+  }
+  // Non-HTML requests
+  event.respondWith(
+    ...
+  );
+});
+Feel free to peruse the code.
+Next steps
+The code I’m running now is fine for a first stab, but there’s room for improvement.
+Right now I’m stashing any HTML pages the user visits into the cache. I don’t think that will get out of control—I imagine most people only ever visit just a handful of pages on my site. But there’s the chance that the cache could get quite bloated. Ideally I’d have some way of keeping the cache nice and lean.
+I was thinking: maybe I should have a separate cache for HTML pages, and limit the number in that cache to, say, 20 or 30 items. Every time I push something new into that cache, I could pop the oldest item out.
+I could imagine doing something similar for images: keeping a cache of just the most recent 10 or 20.
+If you fancy having a go at coding that up, let me know.
+Lessons learned
+There were a few gotchas along the way. I already mentioned the fact that caches.match will always return something so you can’t use catch clauses to handle situations where a file isn’t found in the cache.
+Something else worth noting is that this:
+fetch(request);
+…is functionally equivalent to this:
+fetch(request)
+  .then(function (response) {
+    return response;
+  });
+That’s probably obvious but it took me a while to realise. Likewise:
+caches.match(request);
+…is the same as:
+caches.match(request)
+  .then(function (response) {
+    return response;
+  });
+Here’s another thing… you’ll notice that sometimes I’ve used:
+fetch(request);
+…but sometimes I’ve used:
+fetch(request, { credentials: 'include' } );
+That’s because, by default, a fetch request doesn’t include cookies. That’s fine if the request is for a static file, but if it’s for a potentially-dynamic HTML page, you probably want to make sure that the Service Worker request is no different from a regular browser request. You can do that by passing through that second (optional) argument.
+But probably the trickiest thing is getting your head around the idea of Promises. Writing JavaScript is generally a fairly procedural affair, but once you start dealing with then clauses, you have to come to grips with the fact that the contents of those clauses will return asynchronously. So statements written after the then clause will probably execute before the code inside the clause. It’s kind of hard to explain, but if you find problems with your Service Worker code, check to see if that’s the cause.
+And remember, please share your code and your gotchas: it’s early days for Service Workers so every implementation counts.
+Updates
+I got some very useful feedback from Jake after I published this…
+Expires headers
+By default, JavaScript files on my server are cached for a month. But a Service Worker script probably shouldn’t be cached at all (or cached for a very, very short time). I’ve updated my .htaccess rules accordingly:
+<FilesMatch "serviceworker.js">
+  ExpiresDefault "now"
+</FilesMatch>
+Credentials
+If a request is initiated by the browser, I don’t need to say:
+fetch(request, { credentials: 'include' } );
+It’s enough to just say:
+fetch(request);
+Scope
+I set the scope parameter of my Service Worker to be “/” …but because the Service Worker is sitting in the root directory anyway, I don’t really need to do that. I could just register it with:
+if (navigator.serviceWorker) {
+  navigator.serviceWorker.register('/serviceworker.js');
+}
+If, on the other hand, the Service Worker file were sitting in a folder, but I wanted it to act on the whole site, then I would need to specify the scope:
+if (navigator.serviceWorker) {
+  navigator.serviceWorker.register('/path/to/serviceworker.js', {
+    scope: '/'
+  });
+}
+…and I’d also need to send a special header. So it’s probably easiest to just put Service Worker scripts in the root directory.
+
+</pre>
+</body>
+</html>

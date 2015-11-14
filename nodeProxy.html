@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="author" content="花满楼">
+    <meta name="description" content="">
+    <title>Nodejs绑定域名与反向代理</title>
+    <link rel="stylesheet" href="css/global.css" media="all">
+</head>
+<body>
+<a href="http://www.famanoder.com/bokes/5625049a4c0b02e40e14e107">the link of articles</a><br>
+
+<pre>
+所有的Demo都不是完整的程序，所有未上线的程序都仅仅是个Demo;
+
+Nodejs作为Web开发的后起之秀，在现在的国内环境下，虽比不上PHP的火热，没有.net那么广大的群众基础，盖不过Java的高大上，但Nodejs基于谷歌V8引擎的极速，异步IO与事件模型，无疑将是Web开发的重大革新；我是一个小前端，自从知道Nodejs，就觊觎其好久，翘首以盼终于在业余用Express4.x断断续续做了一个个人博客；
+
+为了让我的博客不只是一个躺在本地的Demo，我买了个服务器，搭建好环境，选好日子，准备上线了，上线后就发现自己傻逼了……在目前的国内，Nodejs算是小众的，最多是个比较有情调的，适合有闲情雅致的人去消遣；当然，问题不可避免，牢骚你也可以随便，但既然选择了，就要相信自己不是盲目的，当然还得坚定的走下去；在此和那些喜欢Nodejs，喜欢前端的小伙伴们分享一下关于上线后首先要解决的域名绑定问题；可能你搞过.net、PHP什么的，有IIS、一键建站的软件，那么这些都无所谓，我只是站在一个小前端的视角，分享下基于Nodejs的建站问题；
+
+现在已经非常流行Nginx反向代理的方式了，当我百度后最开始也是选择了用Nginx来反向代理我的博客站点；我是个服务器小白，一开始真心伤不起啊，不过也没什么可怕的，你只需要按照别人分享的模子，修改成你的就可以了，除非你想正儿八经的搞运维；当然不可避免的肯定会出现些未预知的小问题，比如：代理后客户端的IP获取问题（我那时获取所有客户的IP都是一样的……），上传文件的大小限制问题，都需要你再次重新配置相关的Nginx配置项；
+
+基本配置方式如下：
+
+命令行进入nginx.exe目录 -> start nginx (启动nginx) -> 打开conf目录里的nginx.conf 文件 –> 新增一段upstream
+
+      upstream nodejs{
+
+          server 127.0.0.1:3000;    //你的Express项目端口
+
+          # server 127.0.0.1:3001;
+
+          keepalive 64;
+
+}
+
+ -> 在后面的server{}里引用这里定义好的nodejs  
+
+ 完整的片段如下：
+
+ server {
+         listen 80;
+         server_name www.famanoder.com famanoder.com;  //请求到80端口的host
+         location / {
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              proxy_set_header Host  $http_host;
+              proxy_set_header X-Nginx-Proxy true;
+              proxy_set_header Connection "";
+              proxy_pass      http://nodejs;
+         }
+}
+- > 重启nginx：nginx –s reload或者nginx –c conf/nginx.conf
+
+那么不出意外的话，你现在可以用域名访问你的博客了；
+
+Nodejs是强大的；
+
+几天后我知道了Nodejs的http-proxy模块，就是用来创建代理服务器的；反正都是折腾，我毅然决然选择了不用nginx，使用属于Noders的http-proxy；并不是nginx不好用，只是个人选择偏好问题；相信前端出身的Noders们也肯定会对自家的模块更热衷； 
+
+http.createServer()创建一个常规http服务器监听80端口，通过http-proxy模块proxy.createProxyServer()创建代理服务器，每次请求由proxy.web()方法来进行分发；
+
+根目录下新建一个proxy.js文件：
+
+     var proxy=require(‘http-proxy’).createProxyServer({});
+
+     proxy.on(function(err,req,res){
+
+          res.writeHead(500,{
+
+               ‘Content-Type’:’text/plain’
+
+});
+
+});
+
+var server=require(‘http’).createServer(function(req,res){
+
+     var host= req.headers.host;
+
+     switch(host){
+
+          case ‘www.famanoder.com’:
+
+               proxy.web(req,res,{target:’http://localhost:3000’});
+
+          break;
+
+          case 'famanoder.com':
+
+                    proxy.web(req, res, { target: 'http://localhost:4030' });
+
+            break;
+
+            default: 
+
+               res.writeHead(200, { 
+
+                    'Content-Type': 'text/plain' 
+
+               }); 
+
+               res.end('Welcome to my server!');
+
+}
+
+});
+
+console.log("listening on port 80")
+
+server.listen(80);
+
+是不是也很不错啊，看起来就很爽，OK，接下来就是到app.js下去使用proxy模块了；
+
+加一句：require(‘./proxy’);就行了，到浏览器里看看是不是一样实现了反向代理。
+
+至此，Nodejs反向代理的两种方式就都实现了，这不是Demo，你的程序真正在跑了；接下来就是要根据具体的其他业务，后续跟进和进一步探索了；
+
+上个周末出去溜达时，看到一个大叔的后背上印着一行字：“要做就做大将军！”，当时我就在心里为这位大叔点了一万个赞，我本布衣，一介码农，路漫漫其修远兮，道阻且长，可是——我们正青春！
+
+</pre>
+</body>
+</html>
