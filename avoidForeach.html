@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="author" content="">
+    <meta name="description" content="">
+    <title>Avoid forEach</title>
+    <link rel="stylesheet" href="css/global.css" media="all">
+</head>
+<body>
+<a href="http://aeflash.com/2014-11/avoid-foreach.html">the link of articles</a><br>
+
+<pre>
+
+
+    Iterate over a collection. For side effects
+
+— the mori.each docs
+
+First of all, this post is not about performance. for-loops will always be faster than Array.forEach. If profiling reveals that the overhead of iteration is significant enough and performance is paramount, then you should definitely avoid forEach and use a for-loop. (I would also add that always using a for-loop is the quintessential premature optimization. You can still iterate through a 50-element array in one microsecond) This post is about coding style, not about performance — about an observation I've made about forEach in relation to the other Array.prototype methods.
+forEach is for Side Effects
+
+[].forEach or _.each is usually the first method that people turn to when refactoring imperative code to a more functional style. forEach is a direct analog to the most basic for loop — iterating over an array and doing something — so it is a pretty mechanical transformation. But, like a for-loop, forEach must have a side effect somewhere else in your program for it to accomplish anything. It has to modify an object in a parent scope, or call an external method, or invoke a function, or otherwise interface with something external to the iterator function. Using forEach also means your iterator function is inherently coupled to the scope in which it is defined.
+
+Side effects are generally considered bad in programming. They make programs harder to reason about, can lead to bugs, and make refactoring difficult. Granted, forEach usually introduces minor side effects in the grand scheme of things, but they are unnecessary side effects.
+
+There are also cases where you do want side effects, or side effects are unavoidable.
+
+arr.forEach(function (item) { console.log(item); });
+
+This is perfectly acceptable.
+forEach Hides the Purpose of Iteration
+
+When reading code and coming across an invocation of forEach, at first you do not know what it is trying to accomplish. All you know is that it causes at least one side effect somewhere. You then must read the code and/or comments to understand what is going on. It is a un-semantic method.
+
+There are better iteration functions. There is map, which creates a new array with the results of a function applied. There is filter which returns a (usually) smaller array based on the results of the supplied predicate. There is some (or _.any) which returns true if any of the elements match a predicate. There is every (or _.all) which returns true if all the elements match a predicate. There is reduce which iterates over an array and progressively builds a single other thing, with which you can create the other basic iteration methods. Hopefully this is not news to you, the ES5 Array methods are very powerful. The Lodash/Underscore libraries also augment these basic ES5 methods with more useful and semantic iteration functions (as well as providing better performing implementations of the built-in Array.prototype methods that also work on Objects).
+Refactoring
+
+Here are a several example usages of each, taken from actual projects, and how to refactor them into something better.
+Example 1
+
+var obj = {};
+
+arr.forEach(function (item) {
+  obj[item.key] = item;
+});
+
+A very common operation — building an object out of an array. This usage of forEach is coupled to its scope, since it relies on obj. The iterator function couldn't be reused outside of its current closure scope. Here is a way to rewrite it:
+
+var obj = arr.reduce(function (newObj, item) {
+  newObj[item.key] = item;
+  return newObj;
+}, {});
+
+Now the reducing function only relies on its arguments and nothing else. reduce is the basic building block of side-effect-free iteration: iterate over a collection and product a single other something. It is the least semantic of the ES5 methods, but it is flexible. It is possible implement all of the others in terms of reduce.
+
+Using Lodash, a more semantic way to write this might be:
+
+var obj  = _.zipObject(_.pluck(arr, "key"), arr);
+
+It does require 2 iterations, but it is more expressive.
+Example 2
+
+var replacement = "foo", replacedUrls = urls;
+
+urls.forEach(urls, function replaceToken(url, index) {
+  replacedUrls[index] = url.replace('{token}', replacement);
+});
+
+This is a simple use case for map:
+
+var replacement = "foo", replacedUrls;
+
+replacedUrls = urls.map(function (url) {
+  return url.replace('{token}', replacement);
+});
+
+The mapping function still relies on the closure scope for the replacement, but the intent of iteration is more clear. The initial implementation also re-uses the original array, whereas the map implementation allocates a new one. Notice that it might not be immediately obvious that urls was modified. Elsewhere in the code, something might expect urls to still contain the tokens. Always allocating a new Array prevents this subtle detail from becoming an issue, at the cost of slightly higher memory usage.
+Example 3
+
+var html = "", self = this;
+
+_.each(this.values, function (value) {
+  var id = 'radio_button_' + self.groupName + '_' + value.id;
+
+  html += '<li>';
+  html += '  <input type="radio" name="' + self.groupName + '" id="' + id +
+    '" value="' + value.id + '">';
+  html += '  <label for="' + id + '">' + value.description + '</label>';
+  html += '</li>';
+
+  if (!touchEnabled) {
+    var tooltip = value.getTooltip();
+    if (tooltip) {
+      self.tooltips.push(tooltip);
+    }
+  }
+});
+
+A more complicated example. This is actually doing two things: building a HTML string, and creating tooltips for each value. The iterator function is unnecessarily complicated — or "complected" as Rich Hickey would say. It wraps the two operations together, when it doesn't need to. The first part is a classic use for reduce, so lets split up the two operations:
+
+var html, self = this;
+
+html = _.reduce(this.values, function (str, value) {
+  var id = 'radio_button_' + self.groupName + '_' + value.id;
+
+  str += '<li>';
+  str += '  <input type="radio" name="' + self.groupName + '" id="' + id +
+    '" value="' + value.id + '">';
+  str += '  <label for="' + id + '">' + value.description + '</label>';
+  str += '</li>';
+
+  return str;
+}, "");
+
+_.each(this.values, function (value) {
+
+  if (!touchEnabled) {
+    var tooltip = value.getTooltip();
+    if (tooltip) {
+      self.tooltips.push(tooltip);
+    }
+  }
+});
+
+The first part is pretty acceptable. We are iterating over the values and producing a single HTML string. It still relies on self.groupName, but with some partial application you could do away with it.
+
+Now let's focus on the second operation. If touch is enabled, we get the tooltip. This may or may not return a valid tooltip, so we conditionally push it to the instance's list of tooltips. We can fix this by chaining functions together:
+
+if (!touchEnabled) {
+  this.tooltips = this.tooltips.concat(this.values
+    .map(function (value) {
+      return value.getTooltip();
+    })
+    .filter(_.identity));
+}
+
+We move the touch check outside of the iteration since we only need to do it once. We then map over the collection and call getTooltip() on each value, and then filter out the non-truthy values. The result is concatenated with the existing tooltips. This method does create an intermediate array for each step, but as I said in the other example, expressiveness and clarity matters more.
+
+You could do away with the inline function definition if you defined another helper method:
+
+// thinking of the '.' operator in Clojure
+var dot = _.curry(function(methodName, object) {
+  return object[methodName]();
+})
+
+//...
+this.tooltips = this.tooltips.concat(this.values
+  .map(dot("getTooltip"))
+  .filter(_.identity));
+
+More concise and more expressive.
+Example 4
+
+var matches = [], nonMatches = [];
+
+values.forEach(function(value) {
+  if (matchesSomething(value)) {
+    matches.push(value);
+  } else {
+    nonMatches.push(value);
+  }
+});
+
+Seems pretty simple — split an array into two new arrays based on whether an item matches a predicate. But it is not as simple as it could be. I would rewrite it like this:
+
+var matches = values.filter(matchesSomething);
+var nonMatches = values.filter(not(matchesSomething));
+// implementation of not() an exercise left to the reader
+
+The iterator function is really doing two things. It is more clear to separate it out into two separate iterations. I would only keep the first implementation if there were literally thousands of values, or matchesSomething was very expensive.
+
+When refactoring you may notice that you do end up with more things, but if these things are simpler, then it is okay. Simpler things that compose are easier to reason about than fewer (but more complicated) things.
+Example 5
+
+elements.forEach(function (element) {
+  element.addEventListener("click", handleClick);
+});
+
+This is a perfectly acceptable use of forEach. Yes, you are causing side effects — adding event listeners to the DOM — but that is the single, precise thing you want. You will have to accept side effects when you work with any object model. (And endemic side effects are good reason to avoid object models altogether, but in client-side Javascript, we're stuck with one.)
+Transducers
+
+Recall the final result of Example 3:
+
+this.tooltips = this.tooltips.concat(this.values
+  .map(dot("getTooltip"))
+  .filter(_.identity));
+
+Chaining map and filter means an intermediate array is created and discarded. For small arrays, or small numbers of map() and filter() steps, this is fine. The extra overhead is negligible. But what if you had an array of thousands of values, or dozens of mapping and filtering steps? Suddenly a single iterator is looking attractive again...
+
+Luckily, with the advent of transducers, you can chain together arbitrarily many mapping and filtering operations in a single iteration. I won't get into how transducers work here (This is a good introduction.), but the end result would look like this:
+
+t = require("transducers-js");
+
+var tooltips = t.transduce(
+  t.comp( // composed transform functions
+    t.map(dot("getTooltip")),
+    t.filter(_.identity),
+    // you can add as many mapping and filtering operations as you need
+    t.map(someFunction),
+    t.filter(somePredicate)
+  ),
+  concat, // reducer
+  [], // initial value
+  values // input
+);
+
+It looks a bit different, has a similar flavor to reduce, but it only involves a single iteration, and only allocates one extra array: the initial one you pass to it. You can comp together as many maps or filters as you want and it will only iterate once. You can also make it return any type of result by swapping out concat with any reducer function that takes in two values and returns one. I'd strongly recommend more in depth reads if you want to know more.
+Summary
+
+    forEach is for side effects. If you want to avoid side effects, avoid forEach.
+    forEach hides the intent behind iteration. Use a more semantic iteration methods, such as map, filter, or some.
+    If your operation does many things in one iteration pass, separate it out into many operations.
+    Chain methods together to isolate individual transformations. Use transducers if it gets crazy.
+    You will end up with more operations, but if you do things right, each step will be simpler and easier to reason about.
+    If you do need side effects, forEach is perfectly fine.
+    In the end, if profiling reveals that more semantic iteration functions are a bottleneck or in a hot code path, just use for-loops.
+
+
+</pre>
+</body>
+</html>

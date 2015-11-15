@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="author" content="Joyee">
+    <meta name="description" content="">
+    <title>JS黑魔法之this, setTimeout/setInterval, arguments</title>
+    <link rel="stylesheet" href="css/global.css" media="all">
+</head>
+<body>
+<a href="http://www.cnblogs.com/joyeecheung/p/4018212.html">the link of articles</a><br>
+
+<pre>
+最近发现了JavaScript Garden这个JS黑魔法收集处，不过里面有一些东西并没有说得很透彻，于是边看边查文档or做实验，写了一些笔记，顺手放在博客。等看完了You don't know JS讲this和prototype的部分，说不定又会再写一点。
+函数名字是可选的
+
+通常用匿名函数的地方，匿名函数也是可以带名字的（ES3开始）。便于debug时提供点额外信息/递归。
+
+foo(function bar(){ ... });
+
+但这时候bar只能在bar里访问，不能在外面访问（not defined）。同样地：
+
+var foo = function bar() {
+    bar(); // Works
+}
+bar(); // ReferenceError
+
+这跟
+
+function bar() { ... }
+
+的区别在于后者被赋给了window（或其他global object），相当于
+
+bar = function() { ... }
+
+前者的引用转给了foo（第一段的引用则在其他地方都无法访问）。赋给了global object当然都可以访问。由于JS的name resolution，函数名可以在函数自己内访问。
+
+追记：IE8-会leak掉这个bar到外面去=__=!!
+this的五种绑定
+
+    在全局下直接用this，指的是global object，浏览器中
+
+    console.log(this === window); // true
+
+    在以function foo()形式声明的函数里指的也是global object（注意甚至函数声明内嵌在方法里都是这样，后面会讲到）
+
+    function foo() {
+        console.log(this === window); // true
+    };
+    foo();
+
+    在以形如a.foo()调用的时候，指的是调用的对象，点前面的东西（注意一定要出现括号才是以方法形式调用，否则调用时不是方法，依然是普通函数，看后文）
+
+    var a = {};
+    a.foo = function() {
+        console.log(this === a); // true
+    };
+    a.foo();
+
+    在构造函数里指的是新new出来的对象。注意这里不能直接用this == b检查，因为构造函数调用完之前和之后这个新构造的对象本身是有区别的，不过如果延迟一下再判断，等构造完之后就可以看出this指向的是被返回的那个新对象了。（用that保存而不是直接用this是因为setTimeout调用函数时用的是global object，看后文）
+
+    function foo() {
+        var that = this;
+        setTimeout(function(){console.log(that === b);}, 1000); // true
+    }
+    var b = new foo();
+
+    用apply，call，bind是指哪打哪，这里不赘述
+
+内嵌函数的this绑定
+复制代码
+
+var foo = {};
+foo.method = function() {
+    function test() {
+        console.log(this === window);  // true
+    }
+    test();
+}
+
+foo.method();
+
+复制代码
+
+如果在方法里声明一个函数，这函数里的this又变成了global object，因为this是不会隐式传递的。this的值取决于函数如何调用，不是函数如何声明。因此如果test在调用的时候不是xx.test()的形式，那么就默认this指的是global object。
+
+一般的workaround有：
+
+    常见的用that
+    复制代码
+
+    var foo = {};
+    foo.method = function() {
+        var that = this;
+        var test = function test() {  // store the outer this
+            console.log(that == foo);  // true
+        }
+        test();
+    }
+    foo.method();
+
+    复制代码
+
+    来让里面的函数也能用到外面的this。（注意that不是特殊名字，可以随便用）通常和闭包一起用，来将this传来传去
+
+    将内嵌函数绑在this上
+    复制代码
+
+    var foo = {};
+    foo.method = function() {
+        this._test = function() {
+            console.log(this == foo);  // true
+        }
+        this._test();
+    }
+
+    foo.method();
+
+    复制代码
+
+    不过这样一来foo就额外带上+暴露了一个外面不需要的函数
+
+    用bind
+    复制代码
+
+    var foo = {};
+    foo.method = function() {
+        var test = (function test() {
+            console.log(this == foo);  // true
+        }).bind(this);
+        test()
+    }
+
+    foo.method();
+
+    复制代码
+
+this的延迟绑定
+复制代码
+
+var bar = {}
+bar.baz = function() {
+    console.log(this === bar);  // false
+    console.log(this === window);  // true
+}
+var foo = bar.baz;
+foo();
+
+复制代码
+
+在foo里this又指回了foo所属对象——global object，因为调用的时候又不是xx.foo()，于是默认this又成了global object。注意赋值到foo的仅仅是一个函数引用，this的值没有跟过去——实际上闭包=函数引用+环境的“环境”也是不将this包括在内的。注意这种绑定这也是prototypal inheritance的基础
+复制代码
+
+function Foo() {}
+Foo.prototype.method = function() {
+    console.log(this === b);  // b would be available when executed after b is declared!
+};
+
+function Bar() {}
+Bar.prototype = Foo.prototype;
+
+var b = new Bar();
+b.method();
+
+复制代码
+
+在b.method()里this指的就是b了（Bar的实例），不然指的应该是一个Foo的实例……呵呵那就是implemation inheritance了。注意由于函数执行的时候已经有b，所以在foo里引用b的时候不会报错。JS的函数里的引用都推迟到执行时去找，声明时是不检查的。
+setTimeout里的this
+复制代码
+
+function Foo() {
+    this.value = 42;
+    this.method = function() {
+        // this refers to the global object
+        console.log(this.value); // undefined
+        console.log(this === window); // true
+    };
+    setTimeout(this.method, 500);
+}
+new Foo();
+
+复制代码
+
+setTimeout会脱离当前上下文，用global object调用第一个参数。事实上会以为setTimeout(this.method, 500);，无非是脑补成了会调用this.method()，但事实上传进去的不过是一个没有bind过的函数引用，可以理解为：
+
+method = this.method;  // method belongs to the global object
+setTimeout(method, 500);
+
+简单来说，只要记得只有实际在代码里看到形如this.method()（注意括号）的调用，才能认为函数执行时的this指向点前面的部分。没有看到括号，就不能这样想当然。
+
+如果想要让this是直觉上的那个对象，可以用that+闭包来保证传进去的函数里的this是你想要的值
+复制代码
+
+function Foo() {
+    this.value = 42;
+    var that = this;
+    this.method = function() {
+        // this refers to the new instance
+        console.log(that.value); // 42
+        console.log(that === b); // true
+    };
+    setTimeout(this.method, 500);
+}
+var b = new Foo();
+
+复制代码
+
+或者用bind:
+复制代码
+
+function Foo() {
+    this.value = 42;
+    this.method = (function method() {
+        console.log(this.value); // 42
+        console.log(this === b); // true
+    }).bind(this);
+    setTimeout(this.method, 500);
+}
+var b = new Foo();
+
+复制代码
+setTimeout v.s. setInterval
+
+setInterval只管调用函数，不管函数执行，所以如果被调用的函数阻塞了，而且阻塞的时间大于调用间隔，那么当这个函数执行完之后，可能会有一大波被调用还没开始执行的函数挤上来，像这样：
+
+function foo(){
+    // something that blocks for 1 second
+}
+setInterval(foo, 100);
+
+解决方法是
+
+function foo(){
+    // something that blocks for 1 second
+    setTimeout(foo, 1000);
+}
+foo();
+
+这样会等到函数执行完之后，再等待间隔，再进行下一次调用。注意用setTimeout+传函数的方式递归的时候是不会stackoverflow的，因为setTimeout+传函数只是做标记要调用而不是真的要调用。传进去的函数在执行完之后会立刻返回（setTimeout不会阻塞，所以不需要等待他返回），不会在栈上等着，自然也就不会stackoverflow了。
+如何清除所有的timeout
+
+setTimeout属于DOM的一部分（而且是DOM 0），所以在ECMAScript标准里没有说明，但是在各大浏览器中，setTimeout的ID事实上是越后的越大，所以可以立刻setTimeout一下，得到当前的最大ID，然后逐个清除
+
+// clear "all" timeouts
+var biggestTimeoutId = window.setTimeout(function(){}, 1), i;
+for(i = 1; i <= biggestTimeoutId; i++) {
+    clearTimeout(i);
+}
+
+但是因为标准里没有说，所以这个方法在未来不一定靠谱。HTML5对setTimeout做了规范，但是目前对这个返回的ID的规范是“a user-agent-defined integer that is greater than zero that will identify the timeout to be set by this call in the list of active timers.”也就是说只要是唯一的正整数就可以了，至于怎么变就是user-agent-defined，依然不靠谱啊噗
+arguments不是数组
+
+    所以不能用push，pop，slice
+    可以用for-in
+
+    转换为数组
+
+    Array.prototype.slice.call(arguments);
+
+    但是这种做法 1.速度慢 2.解释器无法优化 所以没必要的时候不要用
+    ES5 strict mode下arguments无法用[]来访问or修改
+
+arguments.callee
+
+优化杀手，尽量不要用。
+
+arguments.callee通常用来reference函数本身，但是除非在用apply、call否则完全可以用函数名代替。arguments.callee.caller（同Function.caller）通常用于reference调用这个函数的函数，但是这种用法显然破坏封装（函数的行为居然要依赖被调用的上下文）。使用了arguments.callee或者Function.caller之后解释器很难确定函数的行为,导致无法进行inline优化。
+
+在ES5 strict mode下使用arguments.callee会报错。
+</pre>
+</body>
+</html>
