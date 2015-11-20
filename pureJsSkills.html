@@ -10,105 +10,103 @@
 <body>
 <a href="http://www.imooc.com/article/2136">the link of articles</a><br>
 
-<pre>
-首先在这里要非常感谢无私分享作品的网友们，这些代码片段主要由网友们平时分享的作品代码里面和经常去逛网站然后查看源文件收集到的。把平时网站上常用的一些实用功能代码片段通通收集起来，方便网友们学习使用，利用好的话可以加快网友们的开发速度，提高工作效率。
+<p>首先在这里要非常感谢无私分享作品的网友们，这些代码片段主要由网友们平时分享的作品代码里面和经常去逛网站然后查看源文件收集到的。把平时网站上常用的一些实用功能代码片段通通收集起来，方便网友们学习使用，利用好的话可以加快网友们的开发速度，提高工作效率。</p><br>
+<p></p><br>
+<p>1、原生JavaScript实现字符串长度截取</p><br>
+<p>function cutstr(str, len) {</p><br>
+    <p>var temp;</p><br>
+    <p>var icount = 0;</p><br>
+    <p>var patrn = /[^\x00-\xff]/;</p><br>
+    <p>var strre = "";</p><br>
+    <p>for (var i = 0; i < str.length; i++) {</p><br>
+        <p>if (icount < len - 1) {</p><br>
+            <p>temp = str.substr(i, 1);</p><br>
+            <p>if (patrn.exec(temp) == null) {</p><br>
+                <p>icount = icount + 1</p><br>
+            <p>} else {</p><br>
+                <p>icount = icount + 2</p><br>
+            <p>}</p><br>
+            <p>strre += temp</p><br>
+        <p>} else {</p><br>
+            <p>break</p><br>
+        <p>}</p><br>
+    <p>}</p><br>
+    <p>return strre + "..."</p><br>
+<p>}</p><br>
+<p>2、原生JavaScript获取域名主机</p><br>
+<p>function getHost(url) {</p><br>
+    <p>var host = "null";</p><br>
+    <p>if(typeof url == "undefined"|| null == url) {</p><br>
+        <p>url = window.location.href;</p><br>
+    <p>}</p><br>
+    <p>var regex = /^\w+\:\/\/([^\/]*).*/;</p><br>
+    <p>var match = url.match(regex);</p><br>
+    <p>if(typeof match != "undefined" && null != match) {</p><br>
+        <p>host = match[1];</p><br>
+    <p>}</p><br>
+    <p>return host;</p><br>
+<p>}</p><br>
+<p>3、原生JavaScript清除空格</p><br>
+<p>String.prototype.trim = function() {</p><br>
+    <p>var reExtraSpace = /^\s*(.*?)\s+$/;</p><br>
+    <p>return this.replace(reExtraSpace, "$1")</p><br>
+<p>}</p><br>
+<p>4、原生JavaScript替换全部</p><br>
+<p>String.prototype.replaceAll = function(s1, s2) {</p><br>
+    <p>return this.replace(new RegExp(s1, "gm"), s2)</p><br>
+<p>}</p><br>
+<p>5、原生JavaScript转义html标签</p><br>
+<p>function HtmlEncode(text) {</p><br>
+    <p>return text.replace(/&/g, '&').replace(/\"/g, '"').replace(/</g, '<').replace(/>/g, '>')</p><br>
+<p>}</p><br>
+<p>6、原生JavaScript还原html标签</p><br>
+<p>function HtmlDecode(text) {</p><br>
+    <p>return text.replace(/&/g, '&').replace(/"/g, '\"').replace(/</g, '<').replace(/>/g, '>')</p><br>
+<p>}</p><br>
+<p>7、原生JavaScript时间日期格式转换</p><br>
+<p>Date.prototype.Format = function(formatStr) {</p><br>
+    <p>var str = formatStr;</p><br>
+    <p>var Week = ['日', '一', '二', '三', '四', '五', '六'];</p><br>
+    <p>str = str.replace(/yyyy|YYYY/, this.getFullYear());</p><br>
+    <p>str = str.replace(/yy|YY/, (this.getYear() % 100) > 9 ? (this.getYear() % 100).toString() : '0' + (this.getYear() % 100));</p><br>
+    <p>str = str.replace(/MM/, (this.getMonth() + 1) > 9 ? (this.getMonth() + 1).toString() : '0' + (this.getMonth() + 1));</p><br>
+    <p>str = str.replace(/M/g, (this.getMonth() + 1));</p><br>
+    <p>str = str.replace(/w|W/g, Week[this.getDay()]);</p><br>
+    <p>str = str.replace(/dd|DD/, this.getDate() > 9 ? this.getDate().toString() : '0' + this.getDate());</p><br>
+    <p>str = str.replace(/d|D/g, this.getDate());</p><br>
+    <p>str = str.replace(/hh|HH/, this.getHours() > 9 ? this.getHours().toString() : '0' + this.getHours());</p><br>
+    <p>str = str.replace(/h|H/g, this.getHours());</p><br>
+    <p>str = str.replace(/mm/, this.getMinutes() > 9 ? this.getMinutes().toString() : '0' + this.getMinutes());</p><br>
+    <p>str = str.replace(/m/g, this.getMinutes());</p><br>
+    <p>str = str.replace(/ss|SS/, this.getSeconds() > 9 ? this.getSeconds().toString() : '0' + this.getSeconds());</p><br>
+    <p>str = str.replace(/s|S/g, this.getSeconds());</p><br>
+    <p>return str</p><br>
+<p>}</p><br>
+<p>8、原生JavaScript判断是否为数字类型</p><br>
+<p>function isDigit(value) {</p><br>
+    <p>var patrn = /^[0-9]*$/;</p><br>
+    <p>if (patrn.exec(value) == null || value == "") {</p><br>
+        <p>return false</p><br>
+    <p>} else {</p><br>
+        <p>return true</p><br>
+    <p>}</p><br>
+<p>}</p><br>
+<p>9、原生JavaScript设置cookie值</p><br>
+<p>function setCookie(name, value, Hours) {</p><br>
+    <p>var d = new Date();</p><br>
+    <p>var offset = 8;</p><br>
+    <p>var utc = d.getTime() + (d.getTimezoneOffset() * 60000);</p><br>
+    <p>var nd = utc + (3600000 * offset);</p><br>
+    <p>var exp = new Date(nd);</p><br>
+    <p>exp.setTime(exp.getTime() + Hours * 60 * 60 * 1000);</p><br>
+    <p>document.cookie = name + "=" + escape(value) + ";path=/;expires=" + exp.toGMTString() + ";domain=x.com;"</p><br>
+<p>}</p><br>
+<p>10、原生JavaScript获取cookie值</p><br>
+<p>function getCookie(name) {</p><br>
+    <p>var arr = document.cookie.match(new RegExp("(^| )" + name + "=([^;]*)(;|$)"));</p><br>
+    <p>if (arr != null) return unescape(arr[2]);</p><br>
+    <p>return null</p><br>
+<p>}</p><br>
 
-1、原生JavaScript实现字符串长度截取
-function cutstr(str, len) {
-    var temp;
-    var icount = 0;
-    var patrn = /[^\x00-\xff]/;
-    var strre = "";
-    for (var i = 0; i < str.length; i++) {
-        if (icount < len - 1) {
-            temp = str.substr(i, 1);
-            if (patrn.exec(temp) == null) {
-                icount = icount + 1
-            } else {
-                icount = icount + 2
-            }
-            strre += temp
-        } else {
-            break
-        }
-    }
-    return strre + "..."
-}
-2、原生JavaScript获取域名主机
-function getHost(url) {
-    var host = "null";
-    if(typeof url == "undefined"|| null == url) {
-        url = window.location.href;
-    }
-    var regex = /^\w+\:\/\/([^\/]*).*/;
-    var match = url.match(regex);
-    if(typeof match != "undefined" && null != match) {
-        host = match[1];
-    }
-    return host;
-}
-3、原生JavaScript清除空格
-String.prototype.trim = function() {
-    var reExtraSpace = /^\s*(.*?)\s+$/;
-    return this.replace(reExtraSpace, "$1")
-}
-4、原生JavaScript替换全部
-String.prototype.replaceAll = function(s1, s2) {
-    return this.replace(new RegExp(s1, "gm"), s2)
-}
-5、原生JavaScript转义html标签
-function HtmlEncode(text) {
-    return text.replace(/&/g, '&').replace(/\"/g, '"').replace(/</g, '<').replace(/>/g, '>')
-}
-6、原生JavaScript还原html标签
-function HtmlDecode(text) {
-    return text.replace(/&/g, '&').replace(/"/g, '\"').replace(/</g, '<').replace(/>/g, '>')
-}
-7、原生JavaScript时间日期格式转换
-Date.prototype.Format = function(formatStr) {
-    var str = formatStr;
-    var Week = ['日', '一', '二', '三', '四', '五', '六'];
-    str = str.replace(/yyyy|YYYY/, this.getFullYear());
-    str = str.replace(/yy|YY/, (this.getYear() % 100) > 9 ? (this.getYear() % 100).toString() : '0' + (this.getYear() % 100));
-    str = str.replace(/MM/, (this.getMonth() + 1) > 9 ? (this.getMonth() + 1).toString() : '0' + (this.getMonth() + 1));
-    str = str.replace(/M/g, (this.getMonth() + 1));
-    str = str.replace(/w|W/g, Week[this.getDay()]);
-    str = str.replace(/dd|DD/, this.getDate() > 9 ? this.getDate().toString() : '0' + this.getDate());
-    str = str.replace(/d|D/g, this.getDate());
-    str = str.replace(/hh|HH/, this.getHours() > 9 ? this.getHours().toString() : '0' + this.getHours());
-    str = str.replace(/h|H/g, this.getHours());
-    str = str.replace(/mm/, this.getMinutes() > 9 ? this.getMinutes().toString() : '0' + this.getMinutes());
-    str = str.replace(/m/g, this.getMinutes());
-    str = str.replace(/ss|SS/, this.getSeconds() > 9 ? this.getSeconds().toString() : '0' + this.getSeconds());
-    str = str.replace(/s|S/g, this.getSeconds());
-    return str
-}
-8、原生JavaScript判断是否为数字类型
-function isDigit(value) {
-    var patrn = /^[0-9]*$/;
-    if (patrn.exec(value) == null || value == "") {
-        return false
-    } else {
-        return true
-    }
-}
-9、原生JavaScript设置cookie值
-function setCookie(name, value, Hours) {
-    var d = new Date();
-    var offset = 8;
-    var utc = d.getTime() + (d.getTimezoneOffset() * 60000);
-    var nd = utc + (3600000 * offset);
-    var exp = new Date(nd);
-    exp.setTime(exp.getTime() + Hours * 60 * 60 * 1000);
-    document.cookie = name + "=" + escape(value) + ";path=/;expires=" + exp.toGMTString() + ";domain=x.com;"
-}
-10、原生JavaScript获取cookie值
-function getCookie(name) {
-    var arr = document.cookie.match(new RegExp("(^| )" + name + "=([^;]*)(;|$)"));
-    if (arr != null) return unescape(arr[2]);
-    return null
-}
-
-</pre>
 </body>
 </html>

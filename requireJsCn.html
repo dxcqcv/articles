@@ -9,203 +9,202 @@
 </head>
 <body>
 <a href="http://tech.techweb.com.cn/thread-622052-1-1.html">the link of articles</a><br>
-<pre>
-JavaScript模块化：使用requireJS按需加载
 
-    主流的JS模块加载器有requireJS，SeaJS等，加载器之间可能会因为遵循的规范不同有微妙的差别，从纯用户的角度出发，之所以选requireJS而不是SeaJS主要是因为：功能实现上两者相差无几，没有明显的性能差异或重大问题。文档丰富程度上，requireJS远远好于SeaJS。
-
-
-
-模块加载器的概念可能稍微接触过前端开发的童鞋都不会陌生，通过模块加载器可以有效的解决这些问题：
-
-    JS文件的依赖关系。
-    通过异步加载优化script标签引起的阻塞问题
-    可以简单的以文件为单位将功能模块化并实现复用
-
-主流的JS模块加载器有requireJS，SeaJS等，加载器之间可能会因为遵循的规范不同有微妙的差别，从纯用户的角度出发，之所以选requireJS而不是SeaJS主要是因为：
-
-    功能实现上两者相差无几，没有明显的性能差异或重大问题。
-    文档丰富程度上，requireJS远远好于SeaJS，就拿最简单的加载jQuery和jQuery插件这回事，虽然两者的实现方法相差无几， 但requireJS就有可以直接拿来用的Demo，SeaJS还要读文档自己慢慢折腾。一些问题的解决上，requireJS为关键词也更容易找到答 案。
-
-
-requireJS 加载jQuery + jQuery插件可能对于一般Web App来说，引入jQuery及相关插件的概率是最大的，requireJS也亲切的给出了相应的解决方案及动态加载jQuery及插件的文档及实例代码。
-在最新的jQuery1.9.X中，jQuery已经在最后直接将自己注册为一个AMD模块，即是说可以直接被requireJS作为模块加载。如果是加载旧版的jQuery有两种方法：
-1. 让jQuery先于requireJS加载
-2. 对jQuery代码稍做一点处理，在jQuery代码包裹一句：
-
-
-
-    define(["jquery"], function($) {
-        // $ is guaranteed to be jQuery now */
-    });
-
-复制代码
-
-
-requireJS的示例中，直接将requireJS与jQuery合并为一个文件，如果是采用jQuery作为核心库的话推荐这种做法。
-同样对于jQuery插件来说也有两种方法
-1. 在插件外包裹代码
-
-    define(["jquery"], function($){ // Put here the plugin code. }); 
-
-复制代码
-
-
-2. 在使用reuqireJS代码加载前注册插件（比如在main.js）中
-
-    requirejs.config({ "shim": { "jquery-cookie" : ["jquery"] } }); 
-
-复制代码
-
-
-requireJS加载第三方类库在实例的App中还用到了jQuery以外的第三方类库，如果类库不是一个标准的AMD模块而又不想更改这些类库的代码，同样需要提前进行定义：
-
-    require.config({ paths: { 'underscore': 'vendor/underscore' }, shim: { underscore: { exports: '_' } } }); 
-
-复制代码
-
-
-CSS文件的模块化处理在requireJS中，模块的概念仅限于JS文件，如果需要加载图片、JSON等非JS文件，requireJS实现了一系列加载插件。
-但是遗憾的是requireJS官方没有对CSS进行模块化处理，而我们在实际项目中却往往能遇到一些场景，比如一个轮播的图片展示栏，比如高级编辑器等等。几乎所有的富UI组件都会由JS与CSS两部分构成，而CSS之间也存在着模块的概念以及依赖关系。
-为了更好的与requireJS整合，这里采用require-css来解决CSS的模块化与依赖问题。
-require-css是一个requireJS插件，下载后将css.js与normalize.js放于main.js同级即可默认被加载，比如在我们的项目中需要加载jQuery Mobile的css文件，那么可以直接这样调用：
-
-    require(['jquery', 'css!../css/jquery.mobile-1.3.0.min.css'], function($) { }); 
-
-复制代码
-
-不过由于这个CSS本质上是属于jQuery Mobile模块的一部分，更好的做法是将这个CSS文件的定义放在jQuery Mobile的依赖关系中，最终我们的requireJS定义部分为：
-
-
-
-    require.config({
-          paths: {
-                'jquerymobile': 'vendor/jquery.mobile-1.3.0',
-                'jstorage' : 'vendor/jstorage',
-                'underscore': 'vendor/underscore'
-          },
-          shim: {
-              jquerymobile : {
-                deps: [
-                    'css!../css/jquery.mobile-1.3.0.min.css'
-                ]
-              },
-              underscore: {
-                  exports: '_'
-              }
-          }
-    });
-
-复制代码
-
-
-在使用模块时，只需要：
-
-
-
-    require(['jquery', 'underscore', 'jquerymobile', 'jstorage'], function($, _) {
-    });
-
-复制代码
-
-jQuery Mobile的CSS文件就会被自动加载，这样CSS与JS就被整合为一个模块了。同理其他有复杂依赖关系的模块也可以做类似处理，requireJS会解决依赖关系的逻辑。
-
-数据源的加载与等待Web App一般都会动态加载后端的数据，数据格式一般可以是JSON、JSONP也可以直接是一个JS变量。这里以JS变量为例：
-
-    var restaurants = [ { "name": "KFC" }, { "name": "7-11" }, { "name": "成都小吃" } ] 
-
-复制代码
-
-
-载入这段数据：
-
-
-
-    $.getScript('data/restaurants.json', function(e){
-        var data = window.restaurants;
-        alert(data[0].name); //KFC
-    });
-
-复制代码
-
-
-单一的数据源确实很简单，但是往往一个应用中会有多个数据源，比如在这个实例App中UI就需要载入用户信息、餐厅信息、订餐信息三种数据后才能工作。如果仅仅靠多层嵌套回调函数的话，可能代码的耦合就非常重了。
-为了解决多个数据加载的问题，我习惯的解决方法是构造一个dataReady事件响应机制。
-
-
-
-    var foodOrder = {
-
-        //数据载入后要执行的函数暂存在这里
-        dataReadyFunc : []
-
-        //数据源URL及载入状态
-        , dataSource : [
-            { url : 'data/restaurants.json', ready : false, data : null },
-            { url : 'data/users.json', ready : false, data : null },
-            { url : 'data/foods.json', ready : false, data : null }
-        ]
-
-        //检查数据源是否全部载入完毕
-        , isReady : function(){
-            var isReady = true;
-            for(var key in this.dataSource){
-                if(this.dataSource[key].ready !== true){
-                    isReady = false;
-                }
-            }
-            return isReady;
-        }
-
-        //数据源全部加载完毕，则逐一运行dataReadyFunc中存放的函数
-        , callReady : function(){
-            if(true === this.isReady()){
-                for(var key in this.dataReadyFunc){
-                    this.dataReadyFunc[key]();
-                }
-            }
-        }
-
-        //供外部调用，会将外部输入的函数暂存在dataReadyFunc中
-        , dataReady : function(func){
-            if (typeof func !== 'function') {
-                return false;
-            }  
-            this.dataReadyFunc.push(func);
-        }
-
-        , init : function(){
-            var self = this;
-            var _initElement = function(key, url){
-                $.getScript(url, function(e){
-                    //每次载入数据后，将数据存放于dataSource中，将ready状态置为true，并调用callReady
-                    self.dataSource[key].data = window[key];
-                    self.dataSource[key].ready = true;
-                    self.callReady();
-                });
-            }
-            for(var key in this.dataSource){
-                _initElement(key, this.dataSource[key].url);
-            }
-        }
-    }
-
-复制代码
-
-
-用法为：
-
-
-
-    foodOrder.dataReady(function(){
-       alert(1);      
-    });
-    foodOrder.init();
-
-复制代码
-
-dataReady内的alert将会在所有数据载入完毕后开始执行。
-这段处理的逻辑并不复杂，将所有要执行的方法通过dataReady暂存起来，等待数据全部加载完毕后再执行，更加复杂的场景此方法仍然通用。
-</pre>
+<p>JavaScript模块化：使用requireJS按需加载</p><br>
+<p></p><br>
+    <p>主流的JS模块加载器有requireJS，SeaJS等，加载器之间可能会因为遵循的规范不同有微妙的差别，从纯用户的角度出发，之所以选requireJS而不是SeaJS主要是因为：功能实现上两者相差无几，没有明显的性能差异或重大问题。文档丰富程度上，requireJS远远好于SeaJS。</p><br>
+<p></p><br>
+<p></p><br>
+<p></p><br>
+<p>模块加载器的概念可能稍微接触过前端开发的童鞋都不会陌生，通过模块加载器可以有效的解决这些问题：</p><br>
+<p></p><br>
+    <p>JS文件的依赖关系。</p><br>
+    <p>通过异步加载优化script标签引起的阻塞问题</p><br>
+    <p>可以简单的以文件为单位将功能模块化并实现复用</p><br>
+<p></p><br>
+<p>主流的JS模块加载器有requireJS，SeaJS等，加载器之间可能会因为遵循的规范不同有微妙的差别，从纯用户的角度出发，之所以选requireJS而不是SeaJS主要是因为：</p><br>
+<p></p><br>
+    <p>功能实现上两者相差无几，没有明显的性能差异或重大问题。</p><br>
+    <p>文档丰富程度上，requireJS远远好于SeaJS，就拿最简单的加载jQuery和jQuery插件这回事，虽然两者的实现方法相差无几， 但requireJS就有可以直接拿来用的Demo，SeaJS还要读文档自己慢慢折腾。一些问题的解决上，requireJS为关键词也更容易找到答 案。</p><br>
+<p></p><br>
+<p></p><br>
+<p>requireJS 加载jQuery + jQuery插件可能对于一般Web App来说，引入jQuery及相关插件的概率是最大的，requireJS也亲切的给出了相应的解决方案及动态加载jQuery及插件的文档及实例代码。</p><br>
+<p>在最新的jQuery1.9.X中，jQuery已经在最后直接将自己注册为一个AMD模块，即是说可以直接被requireJS作为模块加载。如果是加载旧版的jQuery有两种方法：</p><br>
+<p>1. 让jQuery先于requireJS加载</p><br>
+<p>2. 对jQuery代码稍做一点处理，在jQuery代码包裹一句：</p><br>
+<p></p><br>
+<p></p><br>
+<p></p><br>
+    <p>define(["jquery"], function($) {</p><br>
+        <p>// $ is guaranteed to be jQuery now */</p><br>
+    <p>});</p><br>
+<p></p><br>
+<p>复制代码</p><br>
+<p></p><br>
+<p></p><br>
+<p>requireJS的示例中，直接将requireJS与jQuery合并为一个文件，如果是采用jQuery作为核心库的话推荐这种做法。</p><br>
+<p>同样对于jQuery插件来说也有两种方法</p><br>
+<p>1. 在插件外包裹代码</p><br>
+<p></p><br>
+    <p>define(["jquery"], function($){ // Put here the plugin code. }); </p><br>
+<p></p><br>
+<p>复制代码</p><br>
+<p></p><br>
+<p></p><br>
+<p>2. 在使用reuqireJS代码加载前注册插件（比如在main.js）中</p><br>
+<p></p><br>
+    <p>requirejs.config({ "shim": { "jquery-cookie" : ["jquery"] } }); </p><br>
+<p></p><br>
+<p>复制代码</p><br>
+<p></p><br>
+<p></p><br>
+<p>requireJS加载第三方类库在实例的App中还用到了jQuery以外的第三方类库，如果类库不是一个标准的AMD模块而又不想更改这些类库的代码，同样需要提前进行定义：</p><br>
+<p></p><br>
+    <p>require.config({ paths: { 'underscore': 'vendor/underscore' }, shim: { underscore: { exports: '_' } } }); </p><br>
+<p></p><br>
+<p>复制代码</p><br>
+<p></p><br>
+<p></p><br>
+<p>CSS文件的模块化处理在requireJS中，模块的概念仅限于JS文件，如果需要加载图片、JSON等非JS文件，requireJS实现了一系列加载插件。</p><br>
+<p>但是遗憾的是requireJS官方没有对CSS进行模块化处理，而我们在实际项目中却往往能遇到一些场景，比如一个轮播的图片展示栏，比如高级编辑器等等。几乎所有的富UI组件都会由JS与CSS两部分构成，而CSS之间也存在着模块的概念以及依赖关系。</p><br>
+<p>为了更好的与requireJS整合，这里采用require-css来解决CSS的模块化与依赖问题。</p><br>
+<p>require-css是一个requireJS插件，下载后将css.js与normalize.js放于main.js同级即可默认被加载，比如在我们的项目中需要加载jQuery Mobile的css文件，那么可以直接这样调用：</p><br>
+<p></p><br>
+    <p>require(['jquery', 'css!../css/jquery.mobile-1.3.0.min.css'], function($) { }); </p><br>
+<p></p><br>
+<p>复制代码</p><br>
+<p></p><br>
+<p>不过由于这个CSS本质上是属于jQuery Mobile模块的一部分，更好的做法是将这个CSS文件的定义放在jQuery Mobile的依赖关系中，最终我们的requireJS定义部分为：</p><br>
+<p></p><br>
+<p></p><br>
+<p></p><br>
+    <p>require.config({</p><br>
+          <p>paths: {</p><br>
+                <p>'jquerymobile': 'vendor/jquery.mobile-1.3.0',</p><br>
+                <p>'jstorage' : 'vendor/jstorage',</p><br>
+                <p>'underscore': 'vendor/underscore'</p><br>
+          <p>},</p><br>
+          <p>shim: {</p><br>
+              <p>jquerymobile : {</p><br>
+                <p>deps: [</p><br>
+                    <p>'css!../css/jquery.mobile-1.3.0.min.css'</p><br>
+                <p>]</p><br>
+              <p>},</p><br>
+              <p>underscore: {</p><br>
+                  <p>exports: '_'</p><br>
+              <p>}</p><br>
+          <p>}</p><br>
+    <p>});</p><br>
+<p></p><br>
+<p>复制代码</p><br>
+<p></p><br>
+<p></p><br>
+<p>在使用模块时，只需要：</p><br>
+<p></p><br>
+<p></p><br>
+<p></p><br>
+    <p>require(['jquery', 'underscore', 'jquerymobile', 'jstorage'], function($, _) {</p><br>
+    <p>});</p><br>
+<p></p><br>
+<p>复制代码</p><br>
+<p></p><br>
+<p>jQuery Mobile的CSS文件就会被自动加载，这样CSS与JS就被整合为一个模块了。同理其他有复杂依赖关系的模块也可以做类似处理，requireJS会解决依赖关系的逻辑。</p><br>
+<p></p><br>
+<p>数据源的加载与等待Web App一般都会动态加载后端的数据，数据格式一般可以是JSON、JSONP也可以直接是一个JS变量。这里以JS变量为例：</p><br>
+<p></p><br>
+    <p>var restaurants = [ { "name": "KFC" }, { "name": "7-11" }, { "name": "成都小吃" } ] </p><br>
+<p></p><br>
+<p>复制代码</p><br>
+<p></p><br>
+<p></p><br>
+<p>载入这段数据：</p><br>
+<p></p><br>
+<p></p><br>
+<p></p><br>
+    <p>$.getScript('data/restaurants.json', function(e){</p><br>
+        <p>var data = window.restaurants;</p><br>
+        <p>alert(data[0].name); //KFC</p><br>
+    <p>});</p><br>
+<p></p><br>
+<p>复制代码</p><br>
+<p></p><br>
+<p></p><br>
+<p>单一的数据源确实很简单，但是往往一个应用中会有多个数据源，比如在这个实例App中UI就需要载入用户信息、餐厅信息、订餐信息三种数据后才能工作。如果仅仅靠多层嵌套回调函数的话，可能代码的耦合就非常重了。</p><br>
+<p>为了解决多个数据加载的问题，我习惯的解决方法是构造一个dataReady事件响应机制。</p><br>
+<p></p><br>
+<p></p><br>
+<p></p><br>
+    <p>var foodOrder = {</p><br>
+<p></p><br>
+        <p>//数据载入后要执行的函数暂存在这里</p><br>
+        <p>dataReadyFunc : []</p><br>
+<p></p><br>
+        <p>//数据源URL及载入状态</p><br>
+        <p>, dataSource : [</p><br>
+            <p>{ url : 'data/restaurants.json', ready : false, data : null },</p><br>
+            <p>{ url : 'data/users.json', ready : false, data : null },</p><br>
+            <p>{ url : 'data/foods.json', ready : false, data : null }</p><br>
+        <p>]</p><br>
+<p></p><br>
+        <p>//检查数据源是否全部载入完毕</p><br>
+        <p>, isReady : function(){</p><br>
+            <p>var isReady = true;</p><br>
+            <p>for(var key in this.dataSource){</p><br>
+                <p>if(this.dataSource[key].ready !== true){</p><br>
+                    <p>isReady = false;</p><br>
+                <p>}</p><br>
+            <p>}</p><br>
+            <p>return isReady;</p><br>
+        <p>}</p><br>
+<p></p><br>
+        <p>//数据源全部加载完毕，则逐一运行dataReadyFunc中存放的函数</p><br>
+        <p>, callReady : function(){</p><br>
+            <p>if(true === this.isReady()){</p><br>
+                <p>for(var key in this.dataReadyFunc){</p><br>
+                    <p>this.dataReadyFunc[key]();</p><br>
+                <p>}</p><br>
+            <p>}</p><br>
+        <p>}</p><br>
+<p></p><br>
+        <p>//供外部调用，会将外部输入的函数暂存在dataReadyFunc中</p><br>
+        <p>, dataReady : function(func){</p><br>
+            <p>if (typeof func !== 'function') {</p><br>
+                <p>return false;</p><br>
+            <p>}  </p><br>
+            <p>this.dataReadyFunc.push(func);</p><br>
+        <p>}</p><br>
+<p></p><br>
+        <p>, init : function(){</p><br>
+            <p>var self = this;</p><br>
+            <p>var _initElement = function(key, url){</p><br>
+                <p>$.getScript(url, function(e){</p><br>
+                    <p>//每次载入数据后，将数据存放于dataSource中，将ready状态置为true，并调用callReady</p><br>
+                    <p>self.dataSource[key].data = window[key];</p><br>
+                    <p>self.dataSource[key].ready = true;</p><br>
+                    <p>self.callReady();</p><br>
+                <p>});</p><br>
+            <p>}</p><br>
+            <p>for(var key in this.dataSource){</p><br>
+                <p>_initElement(key, this.dataSource[key].url);</p><br>
+            <p>}</p><br>
+        <p>}</p><br>
+    <p>}</p><br>
+<p></p><br>
+<p>复制代码</p><br>
+<p></p><br>
+<p></p><br>
+<p>用法为：</p><br>
+<p></p><br>
+<p></p><br>
+<p></p><br>
+    <p>foodOrder.dataReady(function(){</p><br>
+       <p>alert(1);      </p><br>
+    <p>});</p><br>
+    <p>foodOrder.init();</p><br>
+<p></p><br>
+<p>复制代码</p><br>
+<p></p><br>
+<p>dataReady内的alert将会在所有数据载入完毕后开始执行。</p><br>
+<p>这段处理的逻辑并不复杂，将所有要执行的方法通过dataReady暂存起来，等待数据全部加载完毕后再执行，更加复杂的场景此方法仍然通用。</p><br>
 </body>
 </html>

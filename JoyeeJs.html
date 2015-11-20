@@ -10,1151 +10,1117 @@
 <body>
 <a href="http://zzk.cnblogs.com/s?w=blog%3Ajoyeecheung%20javascript">the link of articles</a><br>
 
-<pre>
---跟随标准与Webkit源码探究DOM -- 获取元素之getElementsByName
-
-按照name属性获取多元素 -- getElementsByName
-标准
-
-    DOM 1 定义在HTMLDocument Interface 中，原型NodeList getElementsByName(in DOMString elementName)，该方法不会抛出任何异常。
-    DOM 2依然定义在HTMLDocument，原型不变，但是新增说明在 HTML4.0 里搜索范围为所有元素，而 XHTML 1.0 里搜索范围缩小到表单元素
-    DOM 3没有 DOM HTML 的标准，沿袭 DOM 2（DOM 3 有 Document 所属的 DOM core标准，但HTMLDocument属于 DOM HTML 而不属于 DOM core）
-    WHATWG 在 DOM HTML 标准里 override 了 Document 而不是另开一个 `HTMLDocument，原型不变
-    W3C HTML5和 WHATWG 基本一致
-
-注意点
-
-    name 和 id 不同，可以重复，因此这个方法名字里有“s”，并且返回的是NodeList
-    这个方法返回的是一个 “live” 的NodeList，当页面元素改变后，再次调用获得的NodeList会跟着更新。
-    当没有符合要求的元素时，返回的不是 null，是一个空的NodeList
-    元素的 name有两种，一种已经在该元素的IDL里，另一种只是名字为name的属性（Attr）
-    一些浏览器还提供document.name这种直接获取name为name的元素的方式，但这个特性并未出现在标准中，一些新的浏览器也开始不支持这种获取方式了，所以最好不要用
-
-兼容性
-
-IE9- 只算入 HTML4 允许带 name 的元素（换句话说，只算入IDL里有name的元素）。但是它们又有一个 bug ：算入任何 id 与所搜索的name相同的元素。
-
-检查
-复制代码
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Document</title>
-</head>
-<body>
-    <div id="foo"></div>
-    <a name="bar"></a>
-    <div name="baz"></div>
-</body>
-</html>
-
-复制代码
-
-IE 9- 下：
-
-    document.getElementsByName('baz').length返回 0（因为 HTML 4 中 div 不能带name）
-    document.getElementsByName('foo').length 返回 1（算入了 HTML 4 中不能带 name 但 id 与查询的name相同的div）
-    document.getElementsByName('bar').length 返回 1，是正常行为。
-
-FireFox 与 Chrome 返回 1，0，1，即允许任意元素带 name，且不会将 id 与 name混淆。
-
-因此在IE 9-下，使用该方法获取的元素可能还需要用 elem.name == name 进行过滤。此外，某些IE版本返回的不是NodeList，HTMLCollection，不过因为HTMLCollection兼容NodeList，所以没有大碍。
-其他
-
-在 DOM HTML 里，name 只出现在一部分元素的IDL里（有哪些元素的IDL里带有attribute DOMString name 可参见 DOM Level 2 和 WHATWG，或者参考HTML4 DTD），而其他元素的name实际上是作为一个普通的Attr Node 而不是元素IDL里本身带的属性，通过NamedNodeMap实现的（参见DOM 3 和 WHATWG）。因此对于IDL里没有name的元素，不能直接用elem.name 获取name，但用getAttribute则都可以获取。例如：
-复制代码
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Document</title>
-</head>
-<body>
-    <div name="baz"></div>
-    <a name="bar"></a>
-</body>
-</html>
-
-复制代码
-
-在 console 里：
-复制代码
-
-var div = document.getElementsByName('baz')[0];
-div.name; // undefined
-div.getAttribute('name'); // baz
-
-var a = document.getElementsByName('bar')[0];
-a.name; // bar
-a.getAttribute('name'); // bar
-
-复制代码
-Webkit 代码分析
-
-Document 继承 ContainerNode （见WebCore/dom/Document.h），实质上使用了ContainerNode的getElementsByName。
-
-ContainerNode的getElementsByName使用NameNodeList作为NodeListsNodeData::addCacheWithAtomicName<>的template specialization （见WebCore/dom/ContainerNode.cpp）。注意NodeListsNodeData::addCacheWithAtomicName<>的模板提高了代码的重用——只需要为template specialization的类定义create、elementMatches等函数，即可使用addCacheWithAtomicName实现live的NodeList的过滤+缓存。WebKit将这些函数都汇总在了CachedLiveNodeList这个类里，只要继承这个类，实现它和它继承的虚函数，就可以用于addCacheWithAtomicName的template specialization（参见WebCore/dom/LiveNodeList.h），建立一个带有缓存和特定过滤标准的NodeList。
-
-NodeListsNodeData使用一个私有的NodeListAtomicNameCacheMap成员m_atomicNameCaches实现缓存。当addCacheWithAtomicName被调用时，首先检查是否已存在对应的缓存，若存在，用m_atomicNameCaches.fastAdd快速更新（参见WebCore/dom/NodeRareData.h（注意NodeListAtomicNameCacheMap本质上是一个hash map，参见typedef定义）。如果没有缓存，调用模版类的create函数创建新的模版类对象并返回，这里为NameNodeList。
-
-NamedNodeList 继承 CachedLiveNodeList，CachedLiveNodeList的迭代器使用的collectionBegin()，collectionTraverseForward()等（见WebCore/dom/LiveNodeList.h）会遍历需要过滤的root node的后代，使用虚函数elementMatches过滤（参见WebCore/dom/LiveNodeList.h）。NamedNodeList实现的elementMatches以element.getNameAttribute() == m_name作为过滤标准（见WebCore/dom/NameNodeList.h）。
-
-值得注意的是CachedLiveNodeList的elementMatches从LiveNodeList继承而来，而在LiveNodeList的原型里elementMatches的原型为virtual bool elementMatches(Element&) const = 0——仅仅是个虚函数，不需要inline（参见WebCore/dom/LiveNodeList.h），但是在NamedNodeList的实现里这个函数被 inline 了。众所周知虚函数的调用要查表会带来较高的开销，对于这样会被高频率调用的函数来说显然是不行的，这里其实是通过 inline 来绕过这个开销。注意 virtual 与 inline 不冲突的条件是编译器需要在编译时知道将这个虚函数做inline实现的类是什么（而不能像普通的virtual调用一样留到运行时确定），而CachedLiveNodeList里凡是调用elementMatches的地方都会有类似auto& nodeList = static_cast<const NodeListType&>(*this)的语句先利用模版确定自己的静态类型，然后再使用这个确定了静态类型的引用而不是this来调用elementMatches，所以不会冲突（这种写法名为Curiously Recurring Template Pattern，能够实现出所谓的static polymorphism来绕开虚函数调用的开销又达到虚函数调用的目的）。
-
-这样绕个大弯（用上模版）为虚函数添加 inline 通常是为了性能考虑，参见Stackoverflow上的相关问题，这里刚好符合应用场景——elementMatches注定会被频繁调用。毕竟getElementsByName经常会直接在document上执行，那就会遍历文档里所有的节点，每遍历一个就要调用一次elementMatches来过滤，那通常至少也是上百甚至上千上万的调用……同样地，在ElementDescendantIterator里几乎所有的方法（包括构造函数）都被inline了，就是因为它作为遍历单位会被频繁调用方法，所以需要 inline 来榨干性能（参见WebCore/dom/ElementDescendantIterator.h
-
-其他值得注意的点：
-
-    webkit是通过对实现定义好的 flag 做位运算来设置和判断元素是否拥有某个属性的（比如name），用一个32位的整数来为ElementData保存数组长度和flag（参见WebCore/dom/ElementData.h，，这样省空间又省时间，并且能够对IDL定义的属性和自定义的属性一视同仁。
-    Node里也是通过事先定义好的 flag 位运算来得知衍生类类型的（而不是使用C++昂贵的RTTI），flag的定义参见WebCore/dom/Node.h
-    另外对于IDL里含有name的元素，webkit实际上是包了一个element.getNameAttribute来返回name的，比如<a>参见 WebCore/html/HTMLAnchorElement.cpp。因此NamedNodeList的element.getNameAttribute()不管name在IDL里还是作为本身的属性都会一并将其返回，反映到上层就是getElementsByName()也不需要管name是否在IDL里。
-
-</pre>
-<pre>
--- 关于HTML5 boilerplate 的一些笔记
-
-最近在研究HTML5 boilerplate的模版，以此为线索可以有条理地学习一些前端的best practice，好过在W3C的文档汪洋里大海捞针……啊哈哈哈……
-开头的IE探测与no-js类是什么？
-
-Modernizer探测到浏览器启用了js的时候会将.no-js替换成.js，这样在CSS里可以为禁用js或者启用js的浏览器添加额外的规则，像这样
-
-.no-js xx {
-    /* Some CSS code for browsers with js disabled */
-}
-
-算是对没有if-else的CSS的一种workaround。其他lt-ie*的类也是同理。
-
-参见： What is the purpose of the HTML “no-js” class?
-<meta http-equiv="X-UA-Compatible" content="IE=edge">
-
-用于让IE使用可用的最高版本的模式，e.g. IE8用IE8模式，IE9用IE9模式。 参见What's the difference if <meta http-equiv="X-UA-Compatible" content="IE=edge"> exists or not?
-
-旧版的HTML5 boilerplate还带了chrome=1这个值，是为了让有Google Chrome Frame这个插件的IE可以用上chrome的特性和JS引擎，但是这个插件已经退役了，所以新版的HTML5 boilerplate也去掉了这个值。
-
-注意这段代码过不了W3C提供的validation，当然也可以理直气壮地无视它啊哈哈哈。如果实在是很在意，可以用.htaccess，参考这个讨论，或者直接在服务器代码里发送这个header（比如端口不是80又想兼容IE的）。
-关于favicon
-
-为iOS从safari放置到桌面的web app设置图标：Configuring Web Applications
-
-关于favicon，一般最好用ico（一些旧版的浏览器不支持png= =），还有一些逗比浏览器（e.g.360）只肯使用网站根目录下的favicon.ico（连端口都不能有），这些点要注意。
-
-参考：
-
-    Adding a favicon to a static HTML page
-    [架站] 為什麼網站的根目錄最好有 favicon.ico 和 robots.txt 存在？
-
-charset放在哪里
-
-为了防止被利用不正确的编码进行攻击（比如IE会猜到用utf-7），一定要声明charset，而且要放在HTML文件的前1024byte（参考HTML5标准），最好放在title的前面（参考Google Dcotype）
-viewport
-
-width=device-width, initial-scale=1一般会在移动端浏览器下取得比较好的效果（尤其是在有响应式设计的时候。不设的话通常移动端的浏览器会按电脑屏幕的尺寸绘图，一打开网页长得跟个PC版的略缩图一样……）
-
-这个入门slides蛮好的
-normalize.css
-
-注意现在维护的normalize.cssv3对IE只支持到IE8，IE6~7需要已经不再维护的normalize.cssv1（不过想用HTML5的就不会考虑照顾这些低版本IE了吧2333）
-
-这里是用 JavaScript 做的逆转序列（数组/字符串）的递归/尾递归实现。另外还尝鲜用了一下 ES6 的destructuring assignment + spread operator 做了一个更 functional 的版本（只支持数组）。
-
-正确性能通过测试（参见 放在我 Github 上的 demo，顺手写了一个小小的测试框架），不过效率就要打问号了——特别是用了 ES6 特性的版本。这里主要是写来玩 JS 的函数式特性的。
-1. 逆转序列的递归实现
-
-先用 Haskell 实现做草稿（因为比较自然），数组版长这样
-
-reverse' :: [a] -> [a]
-reverse' []     = []
-reverse' (x:xs) = reverse' xs ++ [x]
-
-在 JavaScript 里，数组和字符串都有 slice 和 concat，所以可以写成两种“序列”（在离散数学之类的领域里经常把两者合称为 sequence） 都支持的版本。
-
-Note:
-
-    Array.prototype.slice()
-    Array.prototype.concat()
-    String.prototype.slice()
-    String.prototype.concat()
-
-均出现于 ECMAScript 3，实现于 JavaScript 1.2
-
-对应的 JS 实现如下，把 base case 设定到序列长度小于 1 的时候，这样缩减了一步递归。相比而言还是 Haskell 版比较一目了然啊……
-
-function recursiveReverse(seq) {
-    return seq.length > 1 ?
-        recursiveReverse(seq.slice(1)).concat(seq.slice(0, 1)) : seq;
-}
-
-经过测试，数组和字符串都能通过。
-2. 尾递归实现
-
-Haskell 版本长这样，用一个 ret 传递已完成的部分：
-
-reverse' :: [a] -> [a]
-reverse' list = rev list []
-  where rev []     ret = ret
-        rev (x:xs) ret = rev xs (x:ret)
-
-对应的 JS 版本，这里用 slice(0, 0) 来避开类型检查创建空序列。
-复制代码
-
-function tailReverse(seq) {
-    return (function rev(seq, ret) {
-        return seq.length > 0 ?
-            rev(seq.slice(1), seq.slice(0, 1).concat(ret)) : ret;
-    })(seq, seq.slice(0, 0));
-}
-
-复制代码
-
-经过测试，数组和字符串都能通过。
-3. 使用 ES6 新特性的递归版本
-
-ES6 引入了 destructuring assignment 和 spread operator，这样就可以部分地使用函数式编程中的模式匹配（pattern matching）。不过我在 ES6 的新特性里还没找到能在语法层面上让 JS 的函数像 Haskell 那样将模式匹配融合进重载（overloading）的组合（destructuring assignment 本身就是模式匹配的一个子集而已），要重载还是得用当前 JS 里最常见的解决办法——if-else或者三目运算符配合类型检查。这里因为用法简单，直接三目运算符就行。
-
-配合 ES6 新特性实现的简单递归版如下，因为 JS 里数组和字符串没有通用的功能类似 append （往后加元素并返回新的数组）的函数，懒得折腾类型检查了，所以这里只实现了数组版（由于 destructuring assignment + spread operator 的组合[x, ...xs]会将字符串分割成第一个字符，[其他字符组成的数组]，因此直接给下面的函数传入字符串之后再将返回值 join 回字符串也可以达到一样的效果）。
-
-function pmReverse([x, ...xs]) {
-    return typeof x === "undefined" ? [] : pmReverse(xs).concat([x]);
-}
-
-经过测试，数组都可以正常逆转（只有在浏览器打开 ES6 特性的时候这个页面才会正常跑掉这个版本的测试，不然就只有一个 alert）。
-4. 使用 ES6 新特性的尾递归版本
-
-function pmTailReverse(list) {
-    return (function rev([x, ...xs], ret) {
-        return typeof x === "undefined" ? ret : rev(xs, [x].concat(ret));
-    })(list, []);
-}
-
-经过测试，数组都可以正常逆转（只有在浏览器打开 ES6 特性的时候这个页面才会正常跑掉这个版本的测试，不然就只有一个 alert）。
-关于测试页面
-
-为了方便写了一个小小的测试框架，参见源代码。
-
-因为不支持 ES6 的浏览器在解析 ES6 特性的代码时会出语法错误，用 try-catch 抓不了，这里用了 window.onerror 来捕捉并提示。不知为何我的 Chrome 开了实验性 JS 依然打不开 ES6 支持…… FireFox 倒是默认就能用。源代码的注释也是学习各浏览器兼容性的好材料。
-main.css
-
-里面自带了一大堆helper class以及一些opinionated的默认值（e.g.默认文本颜色设为#222而不是比较刺眼的纯黑），另外设置了一堆打印格式和用于设置隐藏的样式。
-modernizr
-
-很有名的处理浏览器新特性兼容性的JS库，略复杂，参考官网即可
-plugins.js
-
-用来放各种插件（包括jQuery插件）。里面有一段代码是用来防止一些逗比浏览器没有console导致报错的，运行完后这类浏览器会多出一个windows.console，里面的各种各样的方法（e.g. window.console.log）都是空函数，这样被调用不会有任何效果但是也不会报错。
-
-追记： 昨晚刚看到这个，今天就遇到了…………没按F12前的IE9就是没有console的。如果遇到IE里javascript失效，按了F12之后又生效，就可以删掉使用console的地方或者将这段代码放到开头的js里。（当然更好的做法就是用工具清理一遍代码后再用于测试233）
-怎样同时使用HTML5 boilerplate与bootstrap
-
-使用Initializr即可
-
-参考：Is Bootstrap a complement or an alternative to HTML5 Boilerplate or viceversa?
-引用外站文件的时候为什么用//做协议
-
-为了让浏览器对不同的协议（https/http）载入不同的文件，这样不会有烦人的提示跑出来，参考The Protocol-relative URL
-WebpageTest
-
-在挖官方文档和相关链接的时候偶然发现了这个好东西：WebpageTest，可以检测不同地点里多种浏览器（包括部分移动端浏览器）下页面载入的性能与网络IO，这样就可以为一些没有开发者工具的浏览器做profiling啦~
-Google Doctype
-
-一些web开发小知识的集合，原来的地址已经挂了，不过在google code上存着镜像：Google Doctype的镜像
-</pre>
-<pre>
---逆转序列的递归/尾递归（+destructuring assignment）实现（JavaScript + ES6） 
-
-
-
-这里是用 JavaScript 做的逆转序列（数组/字符串）的递归/尾递归实现。另外还尝鲜用了一下 ES6 的destructuring assignment + spread operator 做了一个更 functional 的版本（只支持数组）。
-
-正确性能通过测试（参见 放在我 Github 上的 demo，顺手写了一个小小的测试框架），不过效率就要打问号了——特别是用了 ES6 特性的版本。这里主要是写来玩 JS 的函数式特性的。
-1. 逆转序列的递归实现
-
-先用 Haskell 实现做草稿（因为比较自然），数组版长这样
-
-reverse' :: [a] -> [a]
-reverse' []     = []
-reverse' (x:xs) = reverse' xs ++ [x]
-
-在 JavaScript 里，数组和字符串都有 slice 和 concat，所以可以写成两种“序列”（在离散数学之类的领域里经常把两者合称为 sequence） 都支持的版本。
-
-Note:
-
-    Array.prototype.slice()
-    Array.prototype.concat()
-    String.prototype.slice()
-    String.prototype.concat()
-
-均出现于 ECMAScript 3，实现于 JavaScript 1.2
-
-对应的 JS 实现如下，把 base case 设定到序列长度小于 1 的时候，这样缩减了一步递归。相比而言还是 Haskell 版比较一目了然啊……
-
-function recursiveReverse(seq) {
-    return seq.length > 1 ?
-        recursiveReverse(seq.slice(1)).concat(seq.slice(0, 1)) : seq;
-}
-
-经过测试，数组和字符串都能通过。
-2. 尾递归实现
-
-Haskell 版本长这样，用一个 ret 传递已完成的部分：
-
-reverse' :: [a] -> [a]
-reverse' list = rev list []
-  where rev []     ret = ret
-        rev (x:xs) ret = rev xs (x:ret)
-
-对应的 JS 版本，这里用 slice(0, 0) 来避开类型检查创建空序列。
-复制代码
-
-function tailReverse(seq) {
-    return (function rev(seq, ret) {
-        return seq.length > 0 ?
-            rev(seq.slice(1), seq.slice(0, 1).concat(ret)) : ret;
-    })(seq, seq.slice(0, 0));
-}
-
-复制代码
-
-经过测试，数组和字符串都能通过。
-3. 使用 ES6 新特性的递归版本
-
-ES6 引入了 destructuring assignment 和 spread operator，这样就可以部分地使用函数式编程中的模式匹配（pattern matching）。不过我在 ES6 的新特性里还没找到能在语法层面上让 JS 的函数像 Haskell 那样将模式匹配融合进重载（overloading）的组合（destructuring assignment 本身就是模式匹配的一个子集而已），要重载还是得用当前 JS 里最常见的解决办法——if-else或者三目运算符配合类型检查。这里因为用法简单，直接三目运算符就行。
-
-配合 ES6 新特性实现的简单递归版如下，因为 JS 里数组和字符串没有通用的功能类似 append （往后加元素并返回新的数组）的函数，懒得折腾类型检查了，所以这里只实现了数组版（由于 destructuring assignment + spread operator 的组合[x, ...xs]会将字符串分割成第一个字符，[其他字符组成的数组]，因此直接给下面的函数传入字符串之后再将返回值 join 回字符串也可以达到一样的效果）。
-
-function pmReverse([x, ...xs]) {
-    return typeof x === "undefined" ? [] : pmReverse(xs).concat([x]);
-}
-
-经过测试，数组都可以正常逆转（只有在浏览器打开 ES6 特性的时候这个页面才会正常跑掉这个版本的测试，不然就只有一个 alert）。
-4. 使用 ES6 新特性的尾递归版本
-
-function pmTailReverse(list) {
-    return (function rev([x, ...xs], ret) {
-        return typeof x === "undefined" ? ret : rev(xs, [x].concat(ret));
-    })(list, []);
-}
-
-经过测试，数组都可以正常逆转（只有在浏览器打开 ES6 特性的时候这个页面才会正常跑掉这个版本的测试，不然就只有一个 alert）。
-关于测试页面
-
-为了方便写了一个小小的测试框架，参见源代码。
-
-因为不支持 ES6 的浏览器在解析 ES6 特性的代码时会出语法错误，用 try-catch 抓不了，这里用了 window.onerror 来捕捉并提示。不知为何我的 Chrome 开了实验性 JS 依然打不开 ES6 支持…… FireFox 倒是默认就能用。
-</pre>
-<pre>
---跟随标准与Webkit源码探究DOM -- 获取元素之querySelector，querySelectorAll 
-
-使用CSS选择器获取元素 -- querySelector，querySelectorAll（HTML5）
-标准
-
-    W3C Selector API Level 1为Document，DocumentFragment和Element追加了querySelector和querySelctorAll，原型为Element? querySelector(DOMString selectors)和 NodeList querySelectorAll(DOMString selectors)，说明了匹配的算法
-    W3C Selector API 2又追加了find和findAll，但目前在各大浏览器里暂无实现（这个标准目前还未进入recommendation）。
-    WHATWG DOM 将querySelector及querySelectorAll定义在了interface ParentNode并声明Document, DocumentFragment及Element均需实现这个interface，原型为Element? querySelector(DOMString selectors)与[NewObject] NodeList querySelectorAll(DOMString selectors)，并定义了scope-match的步骤。注意interface ParentNode还有用于获取相对位置的元素的两个方法query和queryAll，但目前在各大浏览器里暂无实现。
-    DOM4也新增了interface ParentNode，和WHATWG类似
-
-注意点
-
-    标准里强调了querySelectorAll返回的一定是一个static NodeList -- 也就是说如果将它的返回结果保存下来，当文档更新时，保存的NodeList里的元素不会跟着更新。
-    W3C Selector API Level 1 规定当传入的CSS选择器不合法时，会抛出SYNTAX_ERR异常。Selector API Level 2 和 WHATWG 改为了 SyntaxError。
-    按照W3C Selector API Level 1的提示，在选择器里使用pseudo-elements（目前只有:after，:before，:first-letter，:first-line，:selection）将不会匹配到任何元素，另外出于保护隐私的考虑，标准也推荐将所有链接视为未访问，即:visited不会匹配到任何元素。
-    无匹配元素时，querySelector返回null，querySelectorAll返回空的NodeList
-    有多个匹配元素时，querySelector返回按照document order（先序DFS）遍历到的第一个元素，querySelectorAll返回按照 document order 排序的NodeList
-
-兼容性
-
-IE 9+及其他浏览器的现行版本正常支持包括CSS3的选择器，IE8支持简单的 CSS2 选择器（如：不支持空格表示的后代）
-WebKit 代码分析
-
-ContainerNode 就是 WHATWG 里描述的 interface ParentNode，ContainerNode的querySelector和querySelctorAll实际上分别调用SelectorQuery的queryFirst和queryAll（参考WebCore/dom/ContainerNode.cpp），它们又分别调用SelectorDataList的queryFirst和queryAll（注意这里的 queryAll 和标准里定义的不是一个东西。另外 SingleElementExtractorSelectorQueryTrait和AllElementExtractorSelectorQueryTrait这两个使用模版达到类似动态类型的写法挺有趣的），通过execute来对ContainerNode的子节点匹配CSS。execute里就是CSS选择器的代码，里面还有相当一部分 JIT 的优化，这里就不展开分析了。
-
-在queryFirst用于SelectorQueryTrait的 template specialiation 的 SingleElementExtractorSelectorQueryTrait里，shouldOnlyMatchFirstElement设为true，注意execute用于匹配CSS的其他方法基本都会在第一次找到匹配元素的时候检查shouldOnlyMatchFirstElement确定是否立刻保存匹配结果并返回（使用elementDescendants达到先序DFS，elementDescendants最终也是和getElementsByID的实现一样使用到了NodeTraversal），这样就达到了标准里提到的返回先序DFS遇到的第一个匹配元素的要求。而queryAll使用了StaticElementList（StaticNodeList），来为保存匹配元素的Vector（属于WTF）创建一个 static 的快照用于返回（参见WebCore/dom/SelectorQuery.cpp）
-
-NCZ的博客上讨论了为何StaticNodeList会相对慢很多（不过上面用的是几年前的代码，现在的代码用的是WTF的Vector的swap（底层调用std::swap）通过交换元素来实现复制，参见Source/WTF/wtf/Vector.h）
-
-jQuery也有一个关于querySelectorAll性能问题的 Open issue。
-</pre>
-<pre>
--- 跟随标准与Webkit源码探究DOM -- 获取元素之getElementsByClassName 
-
-按照类名获取元素 -- getElementsByClassName（HTML5）
-标准
-
-    WHATWG 在Document与Element上均有定义，原型 HTMLCollection getElementsByClassName(DOMString classNames)，并定义了匹配算法和类名的提取算法，注意这里是先从参数里提取出类名作为一个set，然后再开始匹配的。其中指明了在quirks mode下类名大小写不敏感，否则大小写敏感
-    DOM 4（Document，Element ）基本和WHATWG一致
-
-注意点
-
-按照标准里的说法，“Unless otherwise stated, a collection must be live. ”。既然标准没有指明getElementsByClassName的返回值说是static的，那么它返回的HTMLCollection就是live的。
-
-WHATWG描述getElementsByClassName的实现是先从参数里用ASCII空白字符分割出类名，将得到的类名组成一个有序集合之后，将能够匹配集合内所有类名的元素返回。除非在quirks mode否则大小写敏感，Document及Element上均有定义。
-兼容性
-
-    属于HTML5新出现的API，IE9+ 及其他浏览器的现行版本均支持
-
-WebKit代码分析
-
-和之前的几个方法一样，在ContainerNode里实现，使用ClassNodeList作为NodeListsNodeData::addCacheWithAtomicName<>的template specialization。之前的一次commit将nodeMatches改为了elementMatches，不过github上的mirror里似乎ClassNodeList还没改掉。ClassNodeList的nodeMatches过滤标准（参考WebCore/dom/ClassNodeList.h）为：
-复制代码
-
-if (!element->hasClass())
-    return false;
-if (!m_classNames.size())
-    return false;
-// FIXME: DOM4 allows getElementsByClassName to return non StyledElement.
-// https://bugs.webkit.org/show_bug.cgi?id=94718
-if (!element->isStyledElement())
-    return false;
-return element->classNames().containsAll(m_classNames);
-
-复制代码
-
-可以看到里面目前有个多余的StyledElement判定……这里首先判断要过滤的元素有没有class或者传入的字符串是否不含有效的class，接着检查元素是否为StyledElement（找不到相关文档，不过Node.h里的enum ConstructionType可以看出哪些元素是StyledElement）。
-
-类名的提取实现在SpaceSplitString。ClassNodeList和ElementData均有SpaceSplitString的m_classNames来维护类名集合。这些外部的类通过调用SpaceSplitString::set来更新和设置类名，而SpaceSplitString::set又调用SpaceSplitStringData::create来维护存有集合的私有成员SpaceSplitStringData m_data。
-
-SpaceSplitStringData::create有两个重载，外部调用的是SpaceSplitStringData::create (const AtomicString& keyString)。里面首先调用维护缓存的spaceSplitStringTable（实质是一个static的hashmap）来检查是否已经有缓存，如果没有则开始创建集合。 WebCore/dom/SpaceSplitString.cpp里的tokenizeSpaceSplitString实现了将类名字符串tokenize的算法，并且每分解出一个token，就会调用参数tokenProcessor的processToken。SpaceSplitStringData::create (const AtomicString& keyString)首先以TokenCounter作为tokenProcessor调用tokenizeSpaceSplitString，将类名字符串先扫描一次统计token数目以方便分配内存，接着调用重载的SpaceSplitStringData::create(const AtomicString& keyString, unsigned tokenCount)，里面使用TokenAtomicStringInitializer作为tokenProcessor再扫描一次字符串，将每个token的内容保存到分配好的内存里。
-
-判断匹配的算法就比较粗暴了……参见WebCore/dom/SpaceSplitString.cpp的containsAll和WebCore/dom/SpaceSplitString.h的contains会发现，居然是线性查找套线性查找的O(mn)（m和n分别为要查找的类名数和被查找的元素的实际类名数）……不过考虑到应用场景下一般类名很少，多点也就五六个了，被查找的类名可能更少，乘起来mn可能最多也就二三十左右，一般大概不会超过十，此时用高级数据结构带来的overhead可能还大过简单的线性查找，所以这样实现也是合理的。
-</pre>
-<pre>
---跟随标准与Webkit源码探究DOM -- 获取元素之getElementById 
-
-按照ID获取元素 -- getElementById
-标准
-
-    DOM 1，定义在HTMLDocument Interface 中，原型Element getElementById(in DOMString elementId)，当不存在拥有对应ID的元素时返回null，该方法不会抛出任何异常。
-    DOM 2，移动到了Document（原HTMLDocument的Parent Interface），原型不变。
-    DOM 3 特别声明浏览器应当使用Attr.isId判断 Attr 是否为 ID，同时加了一句“Attributes with the name "ID" or "id" are not of type ID unless so defined.”，这是针对IE7-会将name为"id"的元素也一并返回的错误实现增加的说明
-    WHATWG 将getElementById 放到了 NonElementParentNode里，因此实现了NonElementParentNode的DocumentFragment也拥有这个方法（而W3C的标准里，DocumentFragment仅仅继承了Node，不应该有此方法）
-    DOM 4 目前与 WHATWG 相同
-
-注意点
-
-    注意 getElementById 的名字里没有全大写的 ID，而是id。
-    目前浏览器中 getElementById 仅定义在Document 和 DocumentFragment上，WHATWG的文档里提到没有添加到Element是为这个特性会挂掉未使用sizzle前的jQuery（<=1.2.6）的单元测试（旧版jQuery使用了elem.getElementById来判断元素是否为Document），参见邮件列表上的讨论。
-    没有插入 DOM （如用appendChild）的元素是无法用该方法搜索到的。由于前面提到的WHATWG与W3C标准的不同，现实中浏览器里的DocumentFragment也可以用此方法搜索元素。
-    一些浏览器会将带有id的元素创建成全局变量（比如id="foo"的元素会以window.foo出现在javascript runtime），并且为了向后兼容所以一直保留这个特性，但是它不在标准里，而且全局变量很容易被覆盖，应该尽量避免使用。
-
-    标准里写明了当存在多个拥有对应 id 的元素时，浏览器的行为是未定义的，但是大多数浏览器都选择返回第一个拥有该 id 的元素。至于什么是“第一个”，就要看浏览器实现中的DOM树是怎么遍历的了。 WHATWG 里描述的是tree-order，即先序的DFS。
-
-    检查方法：
-    复制代码
-
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <title>Document</title>
-    </head>
-    <body>
-        <div>
-            <div id="foo" class="a"></div>
-        </div>
-        <div id="foo" class="b"></div>
-    </body>
-    </html>
-
-    复制代码
-
-    浏览器 console 运行
-
-    document.getElementById('foo')
-
-    Chrome，FireFox及IE均返回class="a"的div，即 WHATWG 中规定的先序DFS。
-
-兼容性
-
-IE7- 会将有与查询id相同的name的元素也算入，因此如果需要兼容 IE7-，可能需要做elem.id === id的判定。
-其他
-
-DOM 2 中，id 定义在 HTMLElement上（DOM 3 没有 DOM HTML 标准），WHATWG 将 id 放在了 Element，定义都是attribute DOMString id，并说明了 id 属于global attribute。总之，在 HTML 里只要是元素就可以有id，并且可以通过 elem.id 的方式直接获取。
-Webkit 相关代码分析
-
-Document 继承自 TreeScope，即WHATWG里提到的NonElementParentNode （参见WebCore/dom/Document.h），getElementById其实实现在TreeScope里，调用私有变量DocumentOrderedMap指针m_elementsById 的getElementById（WebCore/dom/TreeScope.h， WebCore/dom/TreeScope.cpp）。
-
-DocumentOrderedMap的getElementById其实是get的包装，最终实现参见 WebCore/dom/DocumentOrderedMap.cpp
-
-迭代器的继承结构是 descendantsOfType -> TypedElementDescendantIteratorAdapter -> TypedElementDescendantIterator，TypedElementDescendantIterator<ElementType>::operator++ 调用 ElementIterator<ElementType>::traverseNext ，参见TypedElementDescendantIterator.h。
-
-ElementIterator<ElementType>::traverseNext 再调用 Traversal<ElementType>::next（WebCore/dom/ElementIterator.h），这里多态的ElementTraversal（继承Traversal）实际上又调用了NodeTraversal，NodeTraversal中 next的重载利用traverseNextTemplate实现。最后通过WebCore/dom/NodeTraversal.h可以看出访问顺序是 firstChild -> nextSibling -> nextAncestorSibling，也就是先序DFS，符合WHATWG里的描述。
-</pre>
-<pre>
---跟随标准与Webkit源码探究DOM -- 获取元素之getElementsByTagName 
-
-按照标签名获取元素 -- getElementsByTagName
-标准
-
-    DOM 1在Element和Document两个interface中均有定义，原型NodeList getElementsByTagName(in DOMString tagname)，指明按照先序遍历遇到的顺序排列，不会抛出任何异常，参数"*"返回对应document或者element下所有元素。注意这里指明返回的是一个live的仅含有Element的NodeList。
-    DOM 2里定义仍在Element和Document，增加了带namespace的NodeList getElementsByTagNameNS(in DOMString namespaceURI, in DOMString localName)（Element，Document），引入了localName的概念（只有ELEMENT_NODE和ATTRIBUTE_NODE才能有）。
-    DOM 3（Document，Element）特别声明XML应当对标签名的大小写敏感，非XML则依照文档类型自己对待大小写的风格来决定是否敏感。实际上浏览器对HTML都会先将标签转统一换成成小写后再去匹配，所以只能匹配到实际标签名为小写的元素。
-    WHATWG （Document ,Element）将返回类型修改为了HTMLCollection，并解释了通过localName产生HTMLCollection的算法。注意算法的第二步实际上规定了在非HTML文档里，标签名大小写敏感；而在HTML文档里，任何大小写的标签都会被统一转换成小写后再去匹配，所以只能匹配到实际标签名为小写的元素。
-    DOM 4（Document，Element） 目前与 WHATWG 基本一致
-
-DOM Tree Accessors
-
-DOM 1 与 DOM 2 的 HTMLDocument interface 里定义了一系列"DOM Tree Accessors"
-
-    readonly attribute HTMLCollection images
-    readonly attribute HTMLCollection applets
-    readonly attribute HTMLCollection links
-    readonly attribute HTMLCollection forms
-    readonly attribute HTMLCollection anchors
-    attribute HTMLElement body
-
-这意味着在HTML文档里可以用document.images获得所有<img>元素，用document.links获取所有带有href属性的<a>元素，用document.links获取所有带有name属性的<a>元素，用document.forms获取所有<form>元素。另外获取<body>可以使用document.body。
-
-自 HTML5（W3C，WHATWG）开始还定义了document.head，删去了document.anchors，增加了获取<embed>的document.embeds和目前与之相同的document.plugins，以及获取(script)的document.scripts。
-
-自 DOM 1 便在Document 定义了document.documentElement来获取根元素并保留至今，在HTML文档里即<html>元素。
-兼容性
-
-    IE 5.5 不支持*作为参数获取所有元素。IE6以上的IE以及各大浏览器均按照标准实现了getElementsByTagName。
-    虽然document.scripts，document.embeds和document.plugins直到HTML5才标准化，不过各版本IE和其他浏览器的现行版本都支持
-    document.head需要IE9+才支持。其他DOM Tree Accessor基本在各版本IE和现行的浏览器里都有支持。
-
-Webkit 代码分析
-
-类似getElementsByName，getElementsByTagName在ContainerNode里实现。由于标准里对XML的特殊规定，这里会依据文档类型，换用TagNodeList或者HTMLTagNodeList作为NodeListsNodeData::addCacheWithAtomicName<>的template specialization（参见WebCore/dom/ContainerNode.cpp）。
-
-TagNodeList实现的elementMatches是：
-
-if (m_localName != starAtom && m_localName != element.localName())
-    return false;
-return m_namespaceURI == starAtom || m_namespaceURI == element.namespaceURI();
-
-这里starAtom就是标准里说的*。先比对localName是否相符或为*，然后比对namespaceURI是否相符或为*。由于没有大小写转换步骤，所以遵循标准，是大小写敏感的。注意这里比对namespaceURI的步骤相对于getElementsByTagName是多余的，之所以加上是因为getElementsByTagNameNS也用TagNodeList，这样就可以偷懒不用再多写一个比对namespaceURI的版本。不过getElementsByTagNameNS用的其实是addCacheWithQualifiedName而不是addCacheWithAtomicName，其实addCacheWithQualifiedName和addCacheWithAtomicName的不同也就是它拿TagNodeList直接提前做好了template specification而已（参见WebCore/dom/NodeRareData.h）
-
-HTMLTagNodeList实现的elementMatches是：
-
-if (m_localName == starAtom)
-    return true;
-const AtomicString& localName = element.isHTMLElement() ? m_loweredLocalName : m_localName;
-    return localName == element.localName();
-
-按照标准所说，如果被比对的元素是HTML namespace里的，转换为小写再比较。注意这里没有比对namespaceURI，毕竟getElementsByTagNameNS不用它（标准里没有指明getElementsByTagNameNS需要转换大小写，所以用TagNodeList那个大小写敏感的过滤足矣）。
-</pre>
-<pre>
-
-</pre>
-<pre>
---Web开发入门知识小总结 
-
-原来是写给 http://www.zhihu.com/question/22689579 的答案，也算是学了一学期web课程后的一点小总结，搬运到博客里存一下吧~
-
-===============================================================
-
-首先要知道网站访问大概是什么个过程：
-假设你在浏览器地址栏输入这个问题的地址
-
-http://www.zhihu.com/question/22689579
-
-访问过程和下图差不多，浏览器和服务器交流，服务器和数据库交流（有时候数据库就在服务器那台机子上）
-
-<img src="img/aboutWeb/aw01.png" alt="">
-
-
-HTML 与 CSS
-你家电脑拿到一个 html （就是上图 HTTP 响应的 body 里的内容）之后，就会对它进行解析渲染。HTML 就是一种标记语言。类比一下，大家在论坛上经常会用一些代码来添加富文本内容，举一些栗子：
-
-    <img>图片地址</img>
-
-    用来贴图
-
-    <url>超链接</url>
-
-    用来贴地址
-
-    <del>呵呵</del>
-
-    表示标签里的文字应该被删掉（默认添加删除线效果）
-
-这种论坛代码也是一种标记语言，HTML 的作用就和它差不多。服务器返回给你的html文件里面，写的是一些代码，大概是这样的：
-
-<img src="img/aboutWeb/aw02.jpg" alt="">
-
-浏览器拿到这些代码之后，分析一下给你渲染好页面显示出来，如果不用css，效果是这样的，按照浏览器默认的样式显示出列表、图片、超链接、输入框、按钮等等：
-
-<img src="img/aboutWeb/aw03.jpg" alt="">
-
-是 不是觉得默认样式有点看瞎狗眼呢……所以很多时候我们需要自定义样式，现行通用的规定样式的语言是CSS，我们可以用它写一些定义样式的代码，然后在 html 文件里用一个<link>标签把这些规定样式的 CSS 代码与表达内容语义的 HTML 代码关联起来，然后你就能看到一个符合人类正常审美的页面了:
-
-<img src="img/aboutWeb/aw04.jpg" alt="">
-
-CSS 代码的格式基本是
-
-属性:值
-
-比如知乎顶上那个蓝色的导航条，它的 CSS 大约是这样的
-
-<img src="img/aboutWeb/aw05.jpg" alt="">
-
-第一个属性对应的代码翻译成人话，就是它的位置（position）应该是不动（fixed）的，浏览器会兢兢业业地去实现这段代码要求实现的效果， 所以你在页面上翻来翻去顶上那个导航条都会死死地黏在窗口顶部不跟着滚动。
-再拿里面的其他几个属性做栗子解释一下就是：
-
-    left 和 top 为零指明这个导航条要紧贴着窗口的左上角
-    width 和 height 指定这个导航条的宽和高
-    background 指明这个导航条的背景是一种渐变的蓝色
-
-浏览器就会根据这些 CSS 代码，“画”出对应的样式。
-
-HTML 5 与 XHTML
-像 人的语言一样，网络上的网页里的 HTML 代码也不一定是标准的，好比有时候你发音不太标准，别人会去猜测你说的到底是什么一样，有些时候前端程序猿不小心写错了 HTML，浏览器也会试图猜测他们原来想写的是什么，做对应的渲染，而猜是要有一个常识做依据的。加上有些浏览器支持一些标签，有一些又不支持，以及其他 混乱的情况，为了防止大家鸡同鸭讲，我们需要对 HTML 代码里能有什么标签，标签怎么写，标签可以有什么属性这些东西有一定的共识，建立一个通行的标准，HTML5 就是其中一个比较新的标准。这个标准新加了很多可以用的标签和属性，然后各大浏览器也吭哧吭哧按这个标准去实现了很多这些新加的标签和属性，本来前端程序 员要写一堆代码去实现的效果，现在浏览器都给你实现好了，只要写两三行，调用一下浏览器给你实现的部分就能搞定，简单愉快，所以很多人都在热情地推广这个 标准~（当然新标准也不可能是完美的，总会有一些问题，怕跑题这里按下不表~）
-
-至于 XHTML，就是 HTML 的近亲 XML 和 HTML 自己的杂交品种，对语法要求比较严格，并且为了兼容 XML，在语法上与 HTML 有一些不同~
-
-JavaScript 与浏览器脚本
-有 了表示内容和语义的 HTML，规定样式的 CSS，得到的是一个静态的页面，没什么动画（其实用 CSS 还是可以有一些动画的，不过这个跑题了），按 F5 才会刷新数据，都 21世纪了，这么呆板单调的网页怎么能展现我大智人种族的创造性口胡！于是我们有了 Javascript（JS） 来给页面添加一些动态的效果，比如知乎问题的标签，鼠标移上去会弹出一个小窗口，这个就是 JS 实现的效果啦。
-
-
-<img src="img/aboutWeb/aw06.jpg" alt="">
-
-浏览器都会帮你实现一些 JS 可以用的工具（函数，对象什么的），你只要写一些 JS 的代码，保存在 xxx.js 里，在 html 文件中用 (script) 关联进来就可以用了，像上图这个效果应该就包括了
-
-    鼠标悬停到标签上时创建一个新的 <div> 小窗口
-    用 JS 向知乎服务器发送一个请求，得到这个小窗口应该显示的数据，放在这个小窗口里（这就是所谓的AJAX，不用刷新就能与服务器进行交互，更新页面的一小部分~）
-
-浏览器拿到这样的代码，就会解析并实现出相应的效果，楼主问的浏览器脚本，指的就是这样子的代码。其实用来写浏览器脚本的，也不是非得JavaScript 不可，当年还为到底用什么语言写这种代码有过一段战火纷飞的时期，但现在尘埃落定，各大浏览器都默认了：请用 JS 写这些动态效果的代码给我解析~
-
-以上就是前端部分的内容，下面简述一下后端的东西吧> <
-
-Web Server 和 Web Services
-浏览器给服务器发一个请求，服务器不是一看就知道怎么响应的。首先这些请求和响应要有一个通用的写法，也就是要有一个协议，常用的是 HTTP 协议。
-像 最前面的图，服务器的响应写了一个状态码 200 OK ，是 HTTP 协议里约定俗成的一个东西，服务器写 200 OK 在响应里，表示“你请求的这个东西我有”，如果是404 Not Found，就是“你请求的这个东西我这里没有”（有时候潜台词是：“你被墙了”……）。
-HTTP 响应里还包括很多东西，比如 Content-type 表示服务器发过来的文件类型是什么（文本？动画？图片？音频？），这样发过去了人家浏览器好知道怎么展示给用户看。人家服务器怎么知道按协议要写什么东西 进去呢，这就是 Web Server 干活的时候了。
-
-形象化一下HTTP响应，大概就长这样：
-
-
-<img src="img/aboutWeb/aw07.png" alt="">
-
-再上个锤子，浏览器和服务器之间请求响应的过程大致是长这样的，右下角的那些东西就是由 Web Server 生成的（服务器脚本可以做一些改动，但这些一般是 Web Server 的份内活）：
-
-<img src="img/aboutWeb/aw08.jpg" alt="">
-
-再比如说很多时候你访问一个网站，浏览器里输的地址并没有写明你请求的文件，比如这个问题的地址是：
-
-http://www.zhihu.com/question/22689579
-
-但知乎的服务器其实返回了一个html给你，服务器怎么知道这个地址对应要返回什么样的 html 代码给你的？也是 Web Server 干的活。
-
-除了浏览器输地址敲回车这种赤裸裸的访问，客户端与服务器的交互还有很多种，比如：
-
-    前面提到的用 JS 完成的 AJAX，有点像浏览器和服务器之间的悄悄话~
-
-还有其他应用软件与服务器的交互，比如：
-
-    微信、QQ 与腾讯的服务器的交互
-    网游客户端与网游公司服务器的交互
-    搜索引擎用来搜集网页信息的程序（爬虫）与各种各样的网站服务器的交互
-    只要你知道用什么地址访问、怎样访问人家的服务器，并且有相应权限，你也可以自己写一些程序去和他们的服务器交互（比如用微博API - 新浪微博API获取微博，开发第三方应用或者做数据分析）。
-
-从这些栗子里可以看出，客户端与服务器的交互的主体、客体、载体是五花八门的：
-
-    服务器可以是大型机也可以是个人电脑，只要能跑相应的程序就行
-    客户端像前面举的栗子里一样，可以是各种软件，而且这些软件不一定运行在个人电脑上，也可以是手机、平板、智能穿戴设备等等
-    有时候不是传生成好的 HTML 或者其他服务器上已经有的文件，而是传输经过一定逻辑处理后生成的字符串或者其他各种封装好的数据
-
-像 前面提到的 HTML 需要有一定标准一样，为了防止混乱和鸡同鸭讲，我们又需要先对这些机器需要怎么交互达成一定共识，再让它们进行交流。人与人之间通信，需要先有一种大家都 认识的写法（比如简体字/繁体字）和一种彼此都懂的语言（比如普通话/广东话）。要让这些形形色色的机器能够通过网络进行交互，我们就需要指明一种协议 （比如 HTTP/HTTPS）和一种数据封装格式（比如 HTML/XML），Web Server 提供的 Web Service，指的就是这种协议+格式的交流体系。不过 Web Service 的生态系统和 HTML 的标准不一样，用户可以选择的协议和数据封装格式更多，普通的网站访问用的 HTTP + HTML 只是其中一种，一些封闭系统内的交流还可以自己定义一个协议和格式来用（比如 QQ）。
-
-Web Service 传输的数据再经由本地客户端（浏览器、QQ/微信，网游客户端等）的分析渲染，就能够以普通人能够理解的形式展现出来。此外还有一些 Web Service 并不是为普通用户设计的，像前面提到的微博API，是用来给程序猿进行二次开发的~
-
-除 了提供 Web Service， Web Server 还会兼顾很多功能，包括提供缓存，平衡负载，这样在访问量比较大的时候能有有条不紊地接客。常见的现成的 Web Server 有开源的 Apache、Nginx和微软的IIS，你也可以用一些工具（比如 Node.js ）自己定制一个。
-
-PHP ，服务器脚本，Web Framework
-开 头那张图里服务器接到请求之后可以给访客发送对应的文件，但21世纪的服务器怎么可能只会“接请求-发文件”这么弱智的一招呢，人家还可以处理你上传来的 文件的！还可以接受你发过来的各种请求，去操作服务器本地的文件or数据库的！要干这些事，自然服务器那边也少不了要有代码了，这些代码就是服务器脚本。 前面说的 Web Service 传输的数据，主要也是由服务器脚本生成，再交由 Web Server ，按照某种协议套好整个响应的格式，返回给客户端的。
-
-同一个网址，每个人看到的页面不一定是一样的，比如知乎首页的网址都是
-
-http://www.zhihu.com/
-
-但是没登陆和登陆之后看到的东西不一样，登陆之后每个人看到的导航栏的用户信息，关注的动态，都不一样。服务器脚本可以对这些不同的状态，生成不同的页面，交给 Web Server 返回给浏览器。
-知乎的主页给大家看到的 html 整体来说是差不多的，都有导航栏，左边是关注的动态，右边是广告和边栏，每一块的整体构造大同小异，只是一些地方内容有所区别。服务器脚本就是利用已知的数据，在这些因人而异的地方填入相应的内容，生成给每个人看的页面。
-比 如我的主页，导航栏右边的头像和名字跟别人看到的不一样，就是因为这块地方有一个放图片的<img>标签和一个写名字 的<span>标签，服务器脚本在查询本地的数据之后给我返回的页面里<img>的标签填了我头像的图片链 接，<span>标签里填了我的名字，给别人的页面就填其他链接、其他名字，这样每个人看到的页面就不一样了。
-
-
-<img src="img/aboutWeb/aw09.jpg" alt="">
-
-PHP 就是一种常见的用来写服务器脚本的语言，其实只要是能拿来写大家传输数据的通用接口（CGI）的语言都可以用来写服务器脚本（也就是说几乎所有编程语言都 可以写 = =b），只是因为现成工具的丰富程度和专攻程度不一样，所以有一些语言在写服务器端脚本的时候会比较热门。
-
-
-为了方便，我们在 写服务器脚本的时候，通常还会用个同语言写的 Web Framework 来处理各种细节，防御一些常见的攻击，提供跨站认证（比如用已有的微博账号注册其他网站）的接口，利用cookie处理登陆状态和用户设置，生成网页模版 之类的。如果你用 C# 或者 Visual Basic 写服务器脚本，就可以用 ASP.NET 这个框架实现这些功能，帮你省点麻烦。不过现在不少人是反过来为了一个好用的 Web Framework 去选择它对应的服务器脚本语言的。
-
-一个普通网站访问的过程
-简单概括一下，对于我们普通的网站访问，涉及到的技术就是：
-
-    用户操作浏览器访问，浏览器向服务器发出一个 HTTP 请求；
-    服务器接收到 HTTP 请求，Web Server 进行相应的初步处理，使用服务器脚本生成页面；
-    服务器脚本（利用Web Framework）调用本地和客户端传来的数据，生成页面；
-    Web Server 将生成的页面作为 HTTP 响应的 body，根据不同的处理结果生成 HTTP header，发回给客户端；
-    客户端（浏览器）接收到 HTTP 响应，通常第一个请求得到的 HTTP 响应的 body 里是 HTML 代码，于是对 HTML 代码开始解析；
-    解析过程中遇到引用的服务器上的资源（额外的 CSS、JS代码，图片、音视频，附件等），再向 Web Server 发送请求，Web Server 找到对应的文件，发送回来；
-    浏览器解析 HTML 包含的内容，用得到的 CSS 代码进行外观上的进一步渲染，JS 代码也可能会对外观进行一定的处理；
-    用户与页面交互（点击，悬停等等）时，JS 代码对此作出一定的反应，添加特效与动画；
-    交 互的过程中可能需要向服务器索取或提交额外的数据（局部的刷新，类似微博的新消息通知），一般不是跳转就是通过 JS 代码（响应某个动作或者定时）向 Web Server 发送请求，Web Server 再用服务器脚本进行处理（生成资源or写入数据之类的），把资源返回给客户端，客户端用得到的资源来实现动态效果或其他改变。
-
-注意这只是小网站里比较常见的模型，大网站为了解决规模问题还会有很多处理，每个环节都会有一些细微的差异，中间还会使用各种各样的工具减轻服务器的压力，提高效率，方便日常维护~
-
-延伸阅读 —— 那些看花眼的名词
-为了方便调试，很多 Web Framework 会自带一个简单的 Web Server，或者有些 Web Server 会自带一个简单的 Web Framework ，实际部署到服务器上开放使用的时候为了性能或者安全等多方面的考虑，可以把内置的 Web Server 换成其他的，比如 Apache 或者 Nginx （举个栗子，知乎用的是 Tornado 做 Framework，Server 换成了 Nginx，见知乎使用了哪些框架和开源库？）。如果是开源的东西，还可以在遵守开源协议的前提下自己改一下再用~
-
-因为后端不像前端已经有 HTML + CSS + JS 这样的既定事实标准，服务器脚本与 Web Framework 的选择很多，所以新手会听到很多眼花缭乱的技术名词的地方多在这里~ 举一些栗子，早年常见的服务器脚本语言有：
-
-    开源的 PHP
-    Sun 公司的 JSP 中使用的 Java
-    微软的 ASP 中使用的 VBScript
-
-现在在这方面的应用热起来的语言有
-
-    Python，对应常见的 Framework 包括知乎和Quora有用到的 Tornado（其实是自带 Framework 的 Web Server），社区很成熟的 Django （用户包括 Instagram、Pinterest）等
-    Ruby，一般都用 Rails 这个 Framework，用户包括 Github、早期的 Twitter 等
-    逆天的 JavaScript，有了 Node.js 这个平台，Web Server、服务器脚本和浏览器脚本全都可以用 JavaScript 来写……
-    微软家的则跟着 ASP.NET 转移到了C# 或者 Visual Basic
-    Erlang，擅长大规模的并发，不少游戏公司拿来写服务器，靠几十个工程师支撑几亿用户的WhatsApp也是用的这个~
-
-虽然可以用的语言和所属体系五花八门，其实服务器脚本要做的事情本质上都差不多的，就好比自然世界中要表达“吃过了没”这句话的意思，你可以用各种各样的语言在各种各样的场景里表达出来~
-</pre>
-<pre>
-
---跟随 Web 标准探究DOM -- Node 与 Element 的遍历
-
-写在前面
-
-这篇没有什么 WebKit 代码的分析，因为……没啥好分析的，在实现里无非就是树的（先序DFS）遍历而已，囧哈哈哈……在WebCore/dom/Node.h ， WebCore/dom/ContainerNode.h 和 WebCore/dom/Element.h 以及对应的 .cpp 里看两眼就行了。下面这些属性一般都作为了私有变量直接放在了对象里（按照命名规范基本都叫m_xxx），然后通过和标准同名的 public 方法返回。不过要注意一下它们放在了哪里，比如Node里和子节点相关的方法一般定义到了 ContainerNode.h，Node 里需要意识到 Element 存在的方法一般放去了 Element.h （即使定义时是Node::xxx 这样的）。
-
-这篇主要分析一下对作为 Node 的元素和作为 Element 的元素进行遍历的不同，以及总结一下各浏览器对这些 API 的兼容性。
-Node 的遍历
-
-Node 继承 EventTarget，Document，DocumentFragment，Element继承Node，所以下面提到的属性Document，DocumentFragment，Element都可以用。
-Node.parentNode
-标准
-
-DOM 1定义在 Node interface，原型readonly attribute Node parentNode，指明Document，DocumentFragment，Attr 和不在树中的 node 的 parentNode 为 null。
-
-DOM 2，DOM 3，WHATWG，DOM 4 都和 DOM 1 一致
-注意点
-
-这是一个只读属性，所以不能通给一个元素的parentNode赋值来移动它，任何对这个引用的赋值操作都会被无视。比如：
-
-node.parentNode = anotherNode;
-console.log(node.parentNode === anotherNode); // false
-
-但是你可以修改它的parentNode的属性。
-
-node.parentNode.title = "foo";
-console.log(node.parentNode.title); // foo
-
-此外，Document 和 Attr 没有parentNode还好理解，但是 Attr 没有就有点不好理解了，而且Entity 和Notation也是没有的 —— 反向理解，Node.childNodes也是不算 attribute node，entity node 之类的，人家不把你当孩子，你也没必要把人家当父母。
-
-没有 parent 的 Node（比如刚刚用createElement创建或者用removeChild删除）的这个属性是 null。
-兼容性
-
-IE8- 里的 parentNode 有几个 bug：
-
-新创建的元素的 parentNode 是 null，但修改过内容（比如用innerHTML或者appendChild）之后就会变成 DocumentFragment
-
-var foo = document.createElement('div');
-console.log(foo.parentNode);  // null
-foo.innerHTML = "bar"
-console.log(foo.parentNode);  // [object HTMLDocument]
-console.log(foo.parentNode.nodeType);  // 11 = DocumentFragment
-
-从文档中删掉的节点，parentNode是DocumentFragment。对如下 HTML：
-
-<div id="foo">
-    <div id="bar"></div>
-</div>
-
-执行 JS：
-
-var foo = document.getElementById('bar');
-console.log(foo.parentNode);  // [object HTMLDivElement]
-foo.parentNode.removeChild(foo);
-console.log(foo.parentNode);  // [object HTMLDocument]
-console.log(foo.parentNode.nodeType);  // 11 = DocumentFragment
-
-Node.firstChild 和 Node.lastChild
-标准
-
-DOM 1（firstChild，lastChild）定义在 Node interface，原型readonly attribute Node firstChild和readonly attribute Node lastChild，指明Document，DocumentFragment，Attr 和不在树中的 node 的 parentNode 为 null。
-
-DOM 2（firstChild，lastChild），DOM 3（firstChild，lastChild）， WHATWG （firstChild，lastChild），DOM 4（firstChild，lastChild） 和 DOM 1 一致
-注意点
-
-这是一个只读属性，和parentNode一样是不能重新赋值的。
-
-注意浏览器可能（而且很多都）将 text node 和 comment node 算在一个 node 的 child nodes 里（HTML 文本里的缩进和断行都会算成新的 text node 夹杂在元素之间），并且 document.firstNode 可能是 doctype，因此不能判定 firstChild 返回的是一个元素，如果想得到第一个元素的话，需要手动检查nodeType并往后过滤。
-
-CSS pseudo element 不会被算入。
-
-W3C FAQ 解释了为什么有 DOM 的实现会将空白字符算作 text node：
-
-DOM 必须将处理过的 XML （且为了方便，很多 DOM 的实现会将 XML 与 HTML 的许多处理合并）原文全部交给应用，空白字符也不能丢掉（这样 DOM 树与 XML 文本才能完成一一映射），那么就应该找个类型的 node 将它塞进去了 -- 最合适的就是 text node。
-兼容性
-
-IE 8- 不将空白的 text node 算作子节点，IE 9+及其他浏览器都算。对如下HTML：
-
-<div id="foo">
-
-</div>
-
-执行 JS：
-
-var foo = document.getElementById('foo');
-console.log(foo.firstChild);  // null in IE8-, supposed be a text node
-
-Node.nextSibling 和 Node.previousSibling
-标准
-
-DOM 1（previousSibling，nextSibling）定义在 Node interface，原型readonly attribute Node previousSibling和readonly attribute Node nextSibling，不存在对应 node 的返回 null。
-
-DOM 2（previousSibling，nextSibling），DOM 3（previousSibling，nextSibling）和 DOM 1 一致。
-
-WHATWG （previousSibling，nextSibling） 和 W3C DOM 一致，另外说明了 sibling 的概念 和 树中相对位置的概念（按照tree order，即先序DFS）
-
-DOM 4（previousSibling，nextSibling）和 WHATWG 一致。
-注意点
-
-和Node.firstChild 与 Node.lastChild的注意事项类似。
-兼容性
-
-IE 8- 不将空白的 text node 算作 sibling，IE 9+及其他浏览器都算。
-
-HTML：
-
-<div></div>  <div id="foo"></div>
-
-JS:
-
-var foo = document.getElementById('foo');
-// [object HTMLDivElement] in IE8-, supposed to be a text node
-console.log(foo.previousSibling);
-
-Node.childNodes
-标准
-
-DOM 1定义在 Node interface，原型readonly attribute NodeList childNodes，指明了返回的 NodeList 是 live 的，且如果没有子节点时返回空的 NodeList.
-
-DOM 2，DOM 3 和 DOM 1 一致。
-
-WHATWG 原型 [SameObject] readonly attribute NodeList childNodes，和 W3C DOM 一致。DOM 4 和 WHATWG 一样。
-注意点
-
-和Node.firstChild 与 Node.lastChild的注意事项类似。返回的NodeList元素是只读的（可以改元素属性，不可以改引用）。要增删子元素的话对childNodes动脑筋是没用的……（注意：其他浏览器对childNodes中引用的修改仅仅是无视，但 IE 会怒报错）
-
-HTML：
-
-<div id="foo"><p></p></div>
-
-JS：
-复制代码
-
-var foo = document.getElementById('foo');
-console.log(foo.childNodes.length);  // 1
-
-var bar = document.createElement('div');
-
-foo.childNodes[0] = bar;  // attempt to replace a child, throws error in IE
-console.log(foo.childNodes[0].nodeName);  // "P", not replaced
-
-foo.childNodes[1] = bar;  // attempt to add a child, throws error in IE
-console.log(foo.childNodes.length);  // 1, not added
-
-delete foo.childNodes[0];  // attempt to delete a child, throws error in IE
-console.log(foo.childNodes.length);  // 1, not deleted
-
-复制代码
-
-一般document.childNodes 只有 doctype 和 <html>元素，除非原文两者之间有注释。
-
-元素的排列顺序是 document order，即按照 DOM 树中的先序 DFS 排列。
-兼容性
-
-IE 8- 不将空白的 text node 算作子节点，IE 9+及其他浏览器都算。
-
-HTML：
-
-<div id="foo">   </div>
-
-JS:
-
-var foo = document.getElementById('foo');
-// 0 in IE8-, supposed to be 1
-console.log(foo.childNodes.length);
-
-Element 的遍历
-
-Element 与 Node 的区别在于 Element 不包括 text node，comment node，etc. 实际上，Element 继承自 Node，也就是说它本来就是 Node 的一种。Element 都具备（或者说，应该具备） Node.nodeType == Node.ELEMENT_NODE 这个特性（还有其他哪几种nodeType参阅WHATWG标准，这里先不展开叙述）。以下的几种 API 可以看成 Node 版的 API 加上对结果进行Node.nodeType == Node.ELEMENT_NODE过滤（实际上 WebKit 的实现也基本都是这样干的）。
-
-注意作为 Element 的遍历 API 基本都属于 HTML5 的新特性，W3C 标准里一般都只能在 DOM 4 里找到。
-Node.parentElement
-标准
-
-WHATWG 将 parentElement 定义在了 Node ，原型readonly attribute Element? parentElement。W3C DOM 4 也一样。
-
-乍一看，定义在Node似乎有点怪，不过仔细一想其实是很合理的 —— Element 的子节点不一定是 Element，譬如 text node。你不能阻碍人家寻亲的能力啊 :D
-注意点
-
-如果 Node 的父元素不是 Element，返回的是 null。
-兼容性
-
-实际上 parentElement 一开始是 IE 特有的（起码从 IE6 开始就有了），但 IE 仅为 Element 定义了这个属性（即是说 text node 之类的是不能用的）。此后这个属性进入了标准，目前基本各大浏览器都支持它，主要的兼容性问题出现在 IE 不支持非 Element 的 Node 使用这个属性。如果仅对 Element 使用它的话，是可以放心用的。
-
-此外由于 IE8- 中 parentNode 有不轻的 bug（见前文），在只需要 Element 的场景下，可能用 parentElement 是更好的选择。
-ParentNode.firstElementChild 和 ParentNode.lastElementChild
-标准
-
-目前 WHATWG 将 firstElementChild和lastElementChild 定义在了 ParentNode，原型为
-
-readonly attribute Element? firstElementChild;
-readonly attribute Element? lastElementChild;
-
-它们原本在ElementTraversal，后来为了降低耦合，WHATWG 将 ElementTraversal 按照功能分割成了两个 interface ParentNode，ChildNode，而 firstElementChild和lastElementChild自然就挪去了针对有子元素的Node设置的ParentNode。
-
-目前继承 ParentNode 的包括Document，Element 和 DocumentFragment，所以这三个 interface 的对象是可以访问firstElementChild和lastElementChild的。
-
-W3C DOM4 和 WHATWG 一致，但是注意 DOM4 目前还不是 W3C Recommendation。目前处于 W3C Recommendation 状态的标准里， firstElementChild和lastElementChild仍然定义在 ElementTraversal。按照 Element Traversal 标准的规定，所有的 Element 都必须实现 ElementTraversal，但对其他 interface 不作要求。
-
-因此，这两个属性在 WHATWG 和 W3C 的标准里存在分歧：WHATWG 标准中，Document，Element 和 DocumentFragment 均有这两个属性；W3C 标准中，目前仅有 Element 具有这两个属性。但因为和 WHATWG 一致的 DOM4 将来很有可能成为 W3C Recommendation，W3C 标准最后很有可能会和 WHATWG 一样，三种对象均有这两个属性。
-注意点
-
-如果没有子元素，返回的是 null。这两个属性也是只读的，可以在子元素上修改它的属性，但不可更改引用（会被无视）。
-兼容性
-
-由于属于较新的 API，在Element上的使用要 IE 9+ 才支持，其他浏览器的现行版本都有支持。
-
-因为在 WHATWG 和 W3C 的现行标准里存在分歧，Document 和 DocumentFragment 对这两个属性的支持在各浏览器中不太一致。偏 WHATWG 的 Chrome，Firefox 和 Opera 支持 Document，Element 和 DocumentFragment，IE 9+ 和 Safari 仅支持 Element。考虑到 DOM4 将来应该会成为 W3C Recommendation，最后应该是三个 interface 都能支持的（当然，IE 就不能指望旧版本支持了……）
-NonDocumentTypeChildNode.nextElementSibling 和 NonDocumentTypeChildNode.previousElementSibling
-标准
-
-在 WHATWG 标准里，和为了照顾 jQuery 兼容性而为getElementById 专门设一个 NonElementParentNode （而不是ParentNode）类似，为了照顾现存网页的兼容性，nextElementSibling 和 previousElementSibling 被定义在了一个专门分出来的 NonDocumentTypeChildNode（而不是ChildNode）里，参见 bug tracker上的讨论。
-
-目前 NonDocumentTypeChildNode 的定义如下：
-复制代码
-
-[NoInterfaceObject]
-interface NonDocumentTypeChildNode {
-  readonly attribute Element? previousElementSibling;
-  readonly attribute Element? nextElementSibling;
-};
-Element implements NonDocumentTypeChildNode;
-CharacterData implements NonDocumentTypeChildNode;
-
-复制代码
-
-注：目前 WHATWG 标准里 ParentNode，NonElementParentNode，ChildNode 和 NonDocumentTypeChildNode 之间的关系如下图：
-
-<img src="img/aboutWeb/aw10.png" alt="">
-
-W3C DOM4 与 WHATWG 一致，但与ParentNode.firstElementChild 和 ParentNode.lastElementChild的情况类似的是，按照目前处于 W3C Recommendation 的 Element Traversal 的定义，只有 Element 拥有这两个属性，CharacterData 没有。
-注意点
-
-类似 ParentNode.firstElementChild 和 ParentNode.lastElementChild。
-兼容性
-
-也与 ParentNode.firstElementChild 和 ParentNode.lastElementChild类似，需要 IE9+。Chrome，Firefox 和 Opera 支持 Element 和 CharacterData上访问这两个属性，IE 9+ 和 Safari 仅支持 Element， 如果 W3C DOM 4 进入 Recommendation，很可能会统一。
-ParentNode.childElementCount
-标准
-
-WHATWG / DOM4 定义在 ParentNode，原型readonly attribute unsigned long childElementCount。W3C Recommendation 里目前定义在 ElementTraversal，原型和 WHATWG 一样。
-注意点
-
-在符合标准的实现里，约等于 container.children.length。
-兼容性
-
-和 ParentNode.firstElementChild 的情况类似，需要 IE9+，Chrome，Firefox 和 Opera 支持 Document，Element 和 DocumentFragment，IE 9+ 和 Safari 仅支持 Element。
-ParentNode.children
-标准
-
-虽然这个 API 很早就存在，但直到最近才标准化。WHATWG / DOM4 定义在ParentNode，原型[SameObject] readonly attribute HTMLCollection children，指明是一个 live 的 HTMLCollection 而不是NodeList，也就是说元素必然全是 Element（历史遗留问题带来的囧命名，和Node那边的名字对不上号，不叫childElements而叫children，不叫ElementList而叫HTMLCollection……）。
-注意点
-
-类似 Node.childNodes，得到的 HTMLCollection 是 live 且（引用）只读的。
-兼容性
-
-该属性最早出现在 IE 中，IE6 开始具备这个属性。此后各大浏览器跟着实现，Firefox是最后一个实现这个属性的主要浏览器（3.5开始，也蛮久了）。但是由于 WHATWG 标准的接受度不同，Chrome，Firefox 和 Opera 在支持 Document，Element 和 DocumentFragment上使用该属性，IE 和 Safari 仅支持 Element。 Chrome 和 Firefox 还实验性地支持在 SVGElement 上使用该属性。
-
-另外，IE8- 的 children 会包含 comment node。
-
-HTML：
-
-<div id="foo"><!-- comment --></div>
-
-JS：
-
-var foo = document.getElementById('foo');
-console.log(foo.children.length);  // 1, supposed to be 0
-
-
-</pre>
-<pre>
---原生DOM探究 -- NodeList v.s. HTMLCollection
-
-涉及获取元素的主要API
-
-在获取原生DOM元素的时候，主要涉及这几个DOM API（链接为Living Standard）：
-
-    Node及对应集合NodeList
-    Element（继承Node）及对应集合HTMLCollection
-    Document(继承Node)
-
-注：计划取代NodeList和HTMLCollection的Elements目前并无广泛实现
-基础知识 -- NodeList v.s. HTMLCollection
-
-在不同版本的浏览器中，如果调用获取多元素的DOM方法（getElement...()），有的会得到NodeList（多为旧浏览器），有的会得到HTMLCollection（多为新浏览器）。使用Node Interface的方法，如childNodes，得到的通常是NodeList，而使用其他Interface的方法，又有可能得到HTMLCollection。所以有必要了解一下这两者的区别。
-
-关于这两个类型的差异，在Stackoverflow上有一个不错的问答。
-
-其实，只要先看看Living Standard中这两个类型的IDL，便能猜出大概了。NodeList的IDL如下：
-
-interface NodeList {
-  getter Node? item(unsigned long index);
-  readonly attribute unsigned long length;
-  iterable<Node>;
-};
-
-而HTMLCollection的IDL如下：
-
-interface HTMLCollection {
-  readonly attribute unsigned long length;
-  getter Element? item(unsigned long index);
-  getter Element? namedItem(DOMString name);
-};
-
-相同点：
-
-    它们都有length属性
-    都有元素的getter，叫做item
-
-不同点：
-
-    NodeList的元素是Node,HTMLCollection的元素是Element。
-
-    Element继承自Node，是Node的一种，在HTML中，它一般是HTML元素（比如<p>，<a>之类的标签创建出来的对象）。而Node作为父类，除了Element还有一些其他子类，比如HTML元素内的文本对应的Text，文档对应的Document，注释对应的Comment。
-
-    HTMLCollection里，只有Element，而NodeList里可以有Element、Text、Comment等多种元素。按说如果获取元素返回的列表里只有Element，那这两种类没多大区别，但事实上很多时候浏览器会将解析HTML文本时得到的Text和Comment一并放进列表里放回。比如说下面这一段代码
-
-    <div>
-        <!-- Comment -->
-        <p>This is Some Text</p>
-    </div>
-
-    若将这个div的子元素放在列表里返回，那么如果是作为NodeList返回，浏览器最多可以给这个列表5个元素（不同浏览器可能不同）
-        一个<div>和注释间的断行和空格（或tab）作为text node（没错，标签之间的空白符号也可以被解析为text node）
-        注释作为comment node
-        注释和<p>之间的断行和空格（或tab）作为text node
-        p作为element
-        </p>和</div>之间的断行和空格（或tab）作为text node
-
-    因此NodeList里可能会有很多一般DOM操作不需要的text node和comment node需要处理。而HTMLCollection则简单多了，只有<p>这一个元素，这也是比较符合大多数人直觉的结果。
-
-    HTMLCollection还有一个namedItem方法，可以快速获取其中元素。假设有这样一段HTML：
-
-    <div>
-        <!-- Comment -->
-        <p>This is Some Text</p>
-        <img name="test" src="test.jpg">
-    </div>
-
-    那么假设得到了这个div的子元素构成的HTMLCollection，叫做list，那么使用list.namedItem("test")就可以直接得到里面的img元素。
-
-    查找顺序参考Living Standard，但是在现实中不是所有浏览器都遵循标准。比如标准规定如果有多个拥有相同id或者name的元素，只要返回第一个，但chrome和opera会将它们放在一个HTMLCollection或者NodeList里一并返回，参见MDN。
-
-从IDL看不出来的还有如下几点
-
-    这两个类都是“live”的。对其中元素进行操作，会实时反映到DOM中（也因此如果一次性直接在这类列表上进行多个DOM操作的话，带来的开销会很大）。
-    item和namedItem都可以通过[]的缩写进行调用，有的浏览器还支持用()的缩写进行调用（也就是可以list[index]，list[key]或者list(index)，list(key)），以及直接用dot notation调用namedItem（比如list.key）。
-    部分浏览器支持对NodeList调用namedItem或间接通过[]、()、dot notation来调用namedItem，但由于各浏览器支持不同，最好不对NodeList做这种操作。
-    IE8及以下版本浏览器中，注释属于HTMLCommentElement,算作Element,因此会出现在HTMLCollection里。
-
-</pre>
-<pre>
---IE8/9的几个前端bug解决方案 
-
-最近做的东西需要兼容IE……啊真是令人忧伤……
-解决低版本IE的buggy inline-block
-
-低版本的IE只对本身inline的元素能用inline-block，而本身为block的元素需要设为inline。此外，如果想要让这个buggy的inline-block生效，还需要让元素具备hasLayout，常见的方法是设置zoom。如果想绕过低版本IE又保持对其他浏览器的兼容，可以这样：
-
-.xx {
-    display: inline-block;
-    *display: inline;  // IE7- only hack
-    zoom: 1;
-}
-
-参考Inline block doesn't work in internet explorer 7, 6
-jQuery UI 1.7 的 Draggable 在 IE9 无法使用
-
-哀伤地要使用jQuery UI 1.7 版本带的Draggable，但是在IE9下无法使用（i.e.完全不能用233 根本拖不了），原因是IE9的鼠标事件更新后旧版本的jQueryUI没有对它开例外，当成了更低版本的IE去处理，解决方法在这里：jQuery UI does not work on IE9
-
-将_mouseMove的
-
-if ($.browser.msie && !e.button)
-
-改成
-
-if ($.browser.msie && document.documentMode < 9 && !e.button)
-
-为IE9及更高的IE添加例外即可
-IE9下出现javascript无法正常生效，按F12后恢复正常
-
-这是因为IE8/9默认没有console，所以如果代码里残留了类似console.log的引用就会报错，整个js挂掉，参见这里，解决方法是将带console的语句删掉（反正一般也是调试用的，删了无妨），或者用类似HTML5 Boilerplate里的解决方案
-</pre>
-<pre>
-
--- JavaScript: The Evil Parts - 1 
-
-最近在看JavaScript框架设计，在讲解类型判定的时候提到了一些“匪夷所思的情况”，不过没有明说都是什么时候会出现这些情况。自己玩儿了一下，写写随笔吧。不过可能除了我找到的，还有会其他时候会出现这些诡异的现象2333
-
- 
-问题：在JavaScript中，什么时候会出现
-
-    a !== a
-    a == b && b != a
-    a == !a
-    a == b && a == c && b != c
-    a != b && a != c && b == c
-
-答案
-
-    参考ECMA-262 Edition 5.1 Section 11.9.6，其实!=也是true（参考11.9.3）
-
-    var a = NaN;
-    console.log(a !== a); // true
-
-    只有IE6~8会出现（由于window不属于ECMAScript约束范围）
-
-    var a = window；
-    var b = document;
-    console.log(a == b && b != a);  // true
-
-    参考ECMA-262 Edition 5.1 Section 11.9.3，这里也有讲解
-
-    var a = [];
-    console.log(a == !a);  // true
-
-    来自Douglas Crockford的JavaScript: The Good Parts，同样参考11.9.3，这里也有讲解
-
-    var a = 0;
-    var b = '';
-    var c = '0';
-    console.log(a == b && a == c && b != c);  // true
-
-    来源和第4道一样
-
-    var a = false;
-    var b = undefined;
-    var c = null;
-    console.log(a != b && a != c && b == c);  // true
-
-     
-
-JavaScript里的黑魔法真是太可怕了，啊哈哈哈哈哈……虽然都是略钻牛角尖的东西，不过实际开发中可能真的会被其中的情况坑到。所以说，在绝大多数情况下，还是能用===就用===的好……
-</pre>
-<pre></pre>
-<pre></pre>
-<pre></pre>
+<p>--跟随标准与Webkit源码探究DOM -- 获取元素之getElementsByName</p><br>
+<p></p><br>
+<p>按照name属性获取多元素 -- getElementsByName</p><br>
+<p>标准</p><br>
+<p></p><br>
+    <p>DOM 1 定义在HTMLDocument Interface 中，原型NodeList getElementsByName(in DOMString elementName)，该方法不会抛出任何异常。</p><br>
+    <p>DOM 2依然定义在HTMLDocument，原型不变，但是新增说明在 HTML4.0 里搜索范围为所有元素，而 XHTML 1.0 里搜索范围缩小到表单元素</p><br>
+    <p>DOM 3没有 DOM HTML 的标准，沿袭 DOM 2（DOM 3 有 Document 所属的 DOM core标准，但HTMLDocument属于 DOM HTML 而不属于 DOM core）</p><br>
+    <p>WHATWG 在 DOM HTML 标准里 override 了 Document 而不是另开一个 `HTMLDocument，原型不变</p><br>
+    <p>W3C HTML5和 WHATWG 基本一致</p><br>
+<p></p><br>
+<p>注意点</p><br>
+<p></p><br>
+    <p>name 和 id 不同，可以重复，因此这个方法名字里有“s”，并且返回的是NodeList</p><br>
+    <p>这个方法返回的是一个 “live” 的NodeList，当页面元素改变后，再次调用获得的NodeList会跟着更新。</p><br>
+    <p>当没有符合要求的元素时，返回的不是 null，是一个空的NodeList</p><br>
+    <p>元素的 name有两种，一种已经在该元素的IDL里，另一种只是名字为name的属性（Attr）</p><br>
+    <p>一些浏览器还提供document.name这种直接获取name为name的元素的方式，但这个特性并未出现在标准中，一些新的浏览器也开始不支持这种获取方式了，所以最好不要用</p><br>
+<p></p><br>
+<p>兼容性</p><br>
+<p></p><br>
+<p>IE9- 只算入 HTML4 允许带 name 的元素（换句话说，只算入IDL里有name的元素）。但是它们又有一个 bug ：算入任何 id 与所搜索的name相同的元素。</p><br>
+<p></p><br>
+<p>检查</p><br>
+<p>复制代码</p><br>
+<p></p><br>
+<p><!DOCTYPE html></p><br>
+<p><html lang="en"></p><br>
+<p><head></p><br>
+    <p><meta charset="UTF-8"></p><br>
+    <p><title>Document</title></p><br>
+<p></head></p><br>
+<p><body></p><br>
+    <p><div id="foo"></div></p><br>
+    <p><a name="bar"></a></p><br>
+    <p><div name="baz"></div></p><br>
+<p></body></p><br>
+<p></html></p><br>
+<p></p><br>
+<p>复制代码</p><br>
+<p></p><br>
+<p>IE 9- 下：</p><br>
+<p></p><br>
+    <p>document.getElementsByName('baz').length返回 0（因为 HTML 4 中 div 不能带name）</p><br>
+    <p>document.getElementsByName('foo').length 返回 1（算入了 HTML 4 中不能带 name 但 id 与查询的name相同的div）</p><br>
+    <p>document.getElementsByName('bar').length 返回 1，是正常行为。</p><br>
+<p></p><br>
+<p>FireFox 与 Chrome 返回 1，0，1，即允许任意元素带 name，且不会将 id 与 name混淆。</p><br>
+<p></p><br>
+<p>因此在IE 9-下，使用该方法获取的元素可能还需要用 elem.name == name 进行过滤。此外，某些IE版本返回的不是NodeList，HTMLCollection，不过因为HTMLCollection兼容NodeList，所以没有大碍。</p><br>
+<p>其他</p><br>
+<p></p><br>
+<p>在 DOM HTML 里，name 只出现在一部分元素的IDL里（有哪些元素的IDL里带有attribute DOMString name 可参见 DOM Level 2 和 WHATWG，或者参考HTML4 DTD），而其他元素的name实际上是作为一个普通的Attr Node 而不是元素IDL里本身带的属性，通过NamedNodeMap实现的（参见DOM 3 和 WHATWG）。因此对于IDL里没有name的元素，不能直接用elem.name 获取name，但用getAttribute则都可以获取。例如：</p><br>
+<p>复制代码</p><br>
+<p></p><br>
+<p><!DOCTYPE html></p><br>
+<p><html lang="en"></p><br>
+<p><head></p><br>
+    <p><meta charset="UTF-8"></p><br>
+    <p><title>Document</title></p><br>
+<p></head></p><br>
+<p><body></p><br>
+    <p><div name="baz"></div></p><br>
+    <p><a name="bar"></a></p><br>
+<p></body></p><br>
+<p></html></p><br>
+<p></p><br>
+<p>复制代码</p><br>
+<p></p><br>
+<p>在 console 里：</p><br>
+<p>复制代码</p><br>
+<p></p><br>
+<p>var div = document.getElementsByName('baz')[0];</p><br>
+<p>div.name; // undefined</p><br>
+<p>div.getAttribute('name'); // baz</p><br>
+<p></p><br>
+<p>var a = document.getElementsByName('bar')[0];</p><br>
+<p>a.name; // bar</p><br>
+<p>a.getAttribute('name'); // bar</p><br>
+<p></p><br>
+<p>复制代码</p><br>
+<p>Webkit 代码分析</p><br>
+<p></p><br>
+<p>Document 继承 ContainerNode （见WebCore/dom/Document.h），实质上使用了ContainerNode的getElementsByName。</p><br>
+<p></p><br>
+<p>ContainerNode的getElementsByName使用NameNodeList作为NodeListsNodeData::addCacheWithAtomicName<>的template specialization （见WebCore/dom/ContainerNode.cpp）。注意NodeListsNodeData::addCacheWithAtomicName<>的模板提高了代码的重用——只需要为template specialization的类定义create、elementMatches等函数，即可使用addCacheWithAtomicName实现live的NodeList的过滤+缓存。WebKit将这些函数都汇总在了CachedLiveNodeList这个类里，只要继承这个类，实现它和它继承的虚函数，就可以用于addCacheWithAtomicName的template specialization（参见WebCore/dom/LiveNodeList.h），建立一个带有缓存和特定过滤标准的NodeList。</p><br>
+<p></p><br>
+<p>NodeListsNodeData使用一个私有的NodeListAtomicNameCacheMap成员m_atomicNameCaches实现缓存。当addCacheWithAtomicName被调用时，首先检查是否已存在对应的缓存，若存在，用m_atomicNameCaches.fastAdd快速更新（参见WebCore/dom/NodeRareData.h（注意NodeListAtomicNameCacheMap本质上是一个hash map，参见typedef定义）。如果没有缓存，调用模版类的create函数创建新的模版类对象并返回，这里为NameNodeList。</p><br>
+<p></p><br>
+<p>NamedNodeList 继承 CachedLiveNodeList，CachedLiveNodeList的迭代器使用的collectionBegin()，collectionTraverseForward()等（见WebCore/dom/LiveNodeList.h）会遍历需要过滤的root node的后代，使用虚函数elementMatches过滤（参见WebCore/dom/LiveNodeList.h）。NamedNodeList实现的elementMatches以element.getNameAttribute() == m_name作为过滤标准（见WebCore/dom/NameNodeList.h）。</p><br>
+<p></p><br>
+<p>值得注意的是CachedLiveNodeList的elementMatches从LiveNodeList继承而来，而在LiveNodeList的原型里elementMatches的原型为virtual bool elementMatches(Element&) const = 0——仅仅是个虚函数，不需要inline（参见WebCore/dom/LiveNodeList.h），但是在NamedNodeList的实现里这个函数被 inline 了。众所周知虚函数的调用要查表会带来较高的开销，对于这样会被高频率调用的函数来说显然是不行的，这里其实是通过 inline 来绕过这个开销。注意 virtual 与 inline 不冲突的条件是编译器需要在编译时知道将这个虚函数做inline实现的类是什么（而不能像普通的virtual调用一样留到运行时确定），而CachedLiveNodeList里凡是调用elementMatches的地方都会有类似auto& nodeList = static_cast<const NodeListType&>(*this)的语句先利用模版确定自己的静态类型，然后再使用这个确定了静态类型的引用而不是this来调用elementMatches，所以不会冲突（这种写法名为Curiously Recurring Template Pattern，能够实现出所谓的static polymorphism来绕开虚函数调用的开销又达到虚函数调用的目的）。</p><br>
+<p></p><br>
+<p>这样绕个大弯（用上模版）为虚函数添加 inline 通常是为了性能考虑，参见Stackoverflow上的相关问题，这里刚好符合应用场景——elementMatches注定会被频繁调用。毕竟getElementsByName经常会直接在document上执行，那就会遍历文档里所有的节点，每遍历一个就要调用一次elementMatches来过滤，那通常至少也是上百甚至上千上万的调用……同样地，在ElementDescendantIterator里几乎所有的方法（包括构造函数）都被inline了，就是因为它作为遍历单位会被频繁调用方法，所以需要 inline 来榨干性能（参见WebCore/dom/ElementDescendantIterator.h</p><br>
+<p></p><br>
+<p>其他值得注意的点：</p><br>
+<p></p><br>
+    <p>webkit是通过对实现定义好的 flag 做位运算来设置和判断元素是否拥有某个属性的（比如name），用一个32位的整数来为ElementData保存数组长度和flag（参见WebCore/dom/ElementData.h，，这样省空间又省时间，并且能够对IDL定义的属性和自定义的属性一视同仁。</p><br>
+    <p>Node里也是通过事先定义好的 flag 位运算来得知衍生类类型的（而不是使用C++昂贵的RTTI），flag的定义参见WebCore/dom/Node.h</p><br>
+    <p>另外对于IDL里含有name的元素，webkit实际上是包了一个element.getNameAttribute来返回name的，比如<a>参见 WebCore/html/HTMLAnchorElement.cpp。因此NamedNodeList的element.getNameAttribute()不管name在IDL里还是作为本身的属性都会一并将其返回，反映到上层就是getElementsByName()也不需要管name是否在IDL里。</p><br>
+<p></p><br>
+<p>-- 关于HTML5 boilerplate 的一些笔记</p><br>
+<p></p><br>
+<p>最近在研究HTML5 boilerplate的模版，以此为线索可以有条理地学习一些前端的best practice，好过在W3C的文档汪洋里大海捞针……啊哈哈哈……</p><br>
+<p>开头的IE探测与no-js类是什么？</p><br>
+<p></p><br>
+<p>Modernizer探测到浏览器启用了js的时候会将.no-js替换成.js，这样在CSS里可以为禁用js或者启用js的浏览器添加额外的规则，像这样</p><br>
+<p></p><br>
+<p>.no-js xx {</p><br>
+    <p>/* Some CSS code for browsers with js disabled */</p><br>
+<p>}</p><br>
+<p></p><br>
+<p>算是对没有if-else的CSS的一种workaround。其他lt-ie*的类也是同理。</p><br>
+<p></p><br>
+<p>参见： What is the purpose of the HTML “no-js” class?</p><br>
+<p><meta http-equiv="X-UA-Compatible" content="IE=edge"></p><br>
+<p></p><br>
+<p>用于让IE使用可用的最高版本的模式，e.g. IE8用IE8模式，IE9用IE9模式。 参见What's the difference if <meta http-equiv="X-UA-Compatible" content="IE=edge"> exists or not?</p><br>
+<p></p><br>
+<p>旧版的HTML5 boilerplate还带了chrome=1这个值，是为了让有Google Chrome Frame这个插件的IE可以用上chrome的特性和JS引擎，但是这个插件已经退役了，所以新版的HTML5 boilerplate也去掉了这个值。</p><br>
+<p></p><br>
+<p>注意这段代码过不了W3C提供的validation，当然也可以理直气壮地无视它啊哈哈哈。如果实在是很在意，可以用.htaccess，参考这个讨论，或者直接在服务器代码里发送这个header（比如端口不是80又想兼容IE的）。</p><br>
+<p>关于favicon</p><br>
+<p></p><br>
+<p>为iOS从safari放置到桌面的web app设置图标：Configuring Web Applications</p><br>
+<p></p><br>
+<p>关于favicon，一般最好用ico（一些旧版的浏览器不支持png= =），还有一些逗比浏览器（e.g.360）只肯使用网站根目录下的favicon.ico（连端口都不能有），这些点要注意。</p><br>
+<p></p><br>
+<p>参考：</p><br>
+<p></p><br>
+    <p>Adding a favicon to a static HTML page</p><br>
+    <p>[架站] 為什麼網站的根目錄最好有 favicon.ico 和 robots.txt 存在？</p><br>
+<p></p><br>
+<p>charset放在哪里</p><br>
+<p></p><br>
+<p>为了防止被利用不正确的编码进行攻击（比如IE会猜到用utf-7），一定要声明charset，而且要放在HTML文件的前1024byte（参考HTML5标准），最好放在title的前面（参考Google Dcotype）</p><br>
+<p>viewport</p><br>
+<p></p><br>
+<p>width=device-width, initial-scale=1一般会在移动端浏览器下取得比较好的效果（尤其是在有响应式设计的时候。不设的话通常移动端的浏览器会按电脑屏幕的尺寸绘图，一打开网页长得跟个PC版的略缩图一样……）</p><br>
+<p></p><br>
+<p>这个入门slides蛮好的</p><br>
+<p>normalize.css</p><br>
+<p></p><br>
+<p>注意现在维护的normalize.cssv3对IE只支持到IE8，IE6~7需要已经不再维护的normalize.cssv1（不过想用HTML5的就不会考虑照顾这些低版本IE了吧2333）</p><br>
+<p></p><br>
+<p>这里是用 JavaScript 做的逆转序列（数组/字符串）的递归/尾递归实现。另外还尝鲜用了一下 ES6 的destructuring assignment + spread operator 做了一个更 functional 的版本（只支持数组）。</p><br>
+<p></p><br>
+<p>正确性能通过测试（参见 放在我 Github 上的 demo，顺手写了一个小小的测试框架），不过效率就要打问号了——特别是用了 ES6 特性的版本。这里主要是写来玩 JS 的函数式特性的。</p><br>
+<p>1. 逆转序列的递归实现</p><br>
+<p></p><br>
+<p>先用 Haskell 实现做草稿（因为比较自然），数组版长这样</p><br>
+<p></p><br>
+<p>reverse' :: [a] -> [a]</p><br>
+<p>reverse' []     = []</p><br>
+<p>reverse' (x:xs) = reverse' xs ++ [x]</p><br>
+<p></p><br>
+<p>在 JavaScript 里，数组和字符串都有 slice 和 concat，所以可以写成两种“序列”（在离散数学之类的领域里经常把两者合称为 sequence） 都支持的版本。</p><br>
+<p></p><br>
+<p>Note:</p><br>
+<p></p><br>
+    <p>Array.prototype.slice()</p><br>
+    <p>Array.prototype.concat()</p><br>
+    <p>String.prototype.slice()</p><br>
+    <p>String.prototype.concat()</p><br>
+<p></p><br>
+<p>均出现于 ECMAScript 3，实现于 JavaScript 1.2</p><br>
+<p></p><br>
+<p>对应的 JS 实现如下，把 base case 设定到序列长度小于 1 的时候，这样缩减了一步递归。相比而言还是 Haskell 版比较一目了然啊……</p><br>
+<p></p><br>
+<p>function recursiveReverse(seq) {</p><br>
+    <p>return seq.length > 1 ?</p><br>
+        <p>recursiveReverse(seq.slice(1)).concat(seq.slice(0, 1)) : seq;</p><br>
+<p>}</p><br>
+<p></p><br>
+<p>经过测试，数组和字符串都能通过。</p><br>
+<p>2. 尾递归实现</p><br>
+<p></p><br>
+<p>Haskell 版本长这样，用一个 ret 传递已完成的部分：</p><br>
+<p></p><br>
+<p>reverse' :: [a] -> [a]</p><br>
+<p>reverse' list = rev list []</p><br>
+  <p>where rev []     ret = ret</p><br>
+        <p>rev (x:xs) ret = rev xs (x:ret)</p><br>
+<p></p><br>
+<p>对应的 JS 版本，这里用 slice(0, 0) 来避开类型检查创建空序列。</p><br>
+<p>复制代码</p><br>
+<p></p><br>
+<p>function tailReverse(seq) {</p><br>
+    <p>return (function rev(seq, ret) {</p><br>
+        <p>return seq.length > 0 ?</p><br>
+            <p>rev(seq.slice(1), seq.slice(0, 1).concat(ret)) : ret;</p><br>
+    <p>})(seq, seq.slice(0, 0));</p><br>
+<p>}</p><br>
+<p></p><br>
+<p>复制代码</p><br>
+<p></p><br>
+<p>经过测试，数组和字符串都能通过。</p><br>
+<p>3. 使用 ES6 新特性的递归版本</p><br>
+<p></p><br>
+<p>ES6 引入了 destructuring assignment 和 spread operator，这样就可以部分地使用函数式编程中的模式匹配（pattern matching）。不过我在 ES6 的新特性里还没找到能在语法层面上让 JS 的函数像 Haskell 那样将模式匹配融合进重载（overloading）的组合（destructuring assignment 本身就是模式匹配的一个子集而已），要重载还是得用当前 JS 里最常见的解决办法——if-else或者三目运算符配合类型检查。这里因为用法简单，直接三目运算符就行。</p><br>
+<p></p><br>
+<p>配合 ES6 新特性实现的简单递归版如下，因为 JS 里数组和字符串没有通用的功能类似 append （往后加元素并返回新的数组）的函数，懒得折腾类型检查了，所以这里只实现了数组版（由于 destructuring assignment + spread operator 的组合[x, ...xs]会将字符串分割成第一个字符，[其他字符组成的数组]，因此直接给下面的函数传入字符串之后再将返回值 join 回字符串也可以达到一样的效果）。</p><br>
+<p></p><br>
+<p>function pmReverse([x, ...xs]) {</p><br>
+    <p>return typeof x === "undefined" ? [] : pmReverse(xs).concat([x]);</p><br>
+<p>}</p><br>
+<p></p><br>
+<p>经过测试，数组都可以正常逆转（只有在浏览器打开 ES6 特性的时候这个页面才会正常跑掉这个版本的测试，不然就只有一个 alert）。</p><br>
+<p>4. 使用 ES6 新特性的尾递归版本</p><br>
+<p></p><br>
+<p>function pmTailReverse(list) {</p><br>
+    <p>return (function rev([x, ...xs], ret) {</p><br>
+        <p>return typeof x === "undefined" ? ret : rev(xs, [x].concat(ret));</p><br>
+    <p>})(list, []);</p><br>
+<p>}</p><br>
+<p></p><br>
+<p>经过测试，数组都可以正常逆转（只有在浏览器打开 ES6 特性的时候这个页面才会正常跑掉这个版本的测试，不然就只有一个 alert）。</p><br>
+<p>关于测试页面</p><br>
+<p></p><br>
+<p>为了方便写了一个小小的测试框架，参见源代码。</p><br>
+<p></p><br>
+<p>因为不支持 ES6 的浏览器在解析 ES6 特性的代码时会出语法错误，用 try-catch 抓不了，这里用了 window.onerror 来捕捉并提示。不知为何我的 Chrome 开了实验性 JS 依然打不开 ES6 支持…… FireFox 倒是默认就能用。源代码的注释也是学习各浏览器兼容性的好材料。</p><br>
+<p>main.css</p><br>
+<p></p><br>
+<p>里面自带了一大堆helper class以及一些opinionated的默认值（e.g.默认文本颜色设为#222而不是比较刺眼的纯黑），另外设置了一堆打印格式和用于设置隐藏的样式。</p><br>
+<p>modernizr</p><br>
+<p></p><br>
+<p>很有名的处理浏览器新特性兼容性的JS库，略复杂，参考官网即可</p><br>
+<p>plugins.js</p><br>
+<p></p><br>
+<p>用来放各种插件（包括jQuery插件）。里面有一段代码是用来防止一些逗比浏览器没有console导致报错的，运行完后这类浏览器会多出一个windows.console，里面的各种各样的方法（e.g. window.console.log）都是空函数，这样被调用不会有任何效果但是也不会报错。</p><br>
+<p></p><br>
+<p>追记： 昨晚刚看到这个，今天就遇到了…………没按F12前的IE9就是没有console的。如果遇到IE里javascript失效，按了F12之后又生效，就可以删掉使用console的地方或者将这段代码放到开头的js里。（当然更好的做法就是用工具清理一遍代码后再用于测试233）</p><br>
+<p>怎样同时使用HTML5 boilerplate与bootstrap</p><br>
+<p></p><br>
+<p>使用Initializr即可</p><br>
+<p></p><br>
+<p>参考：Is Bootstrap a complement or an alternative to HTML5 Boilerplate or viceversa?</p><br>
+<p>引用外站文件的时候为什么用//做协议</p><br>
+<p></p><br>
+<p>为了让浏览器对不同的协议（https/http）载入不同的文件，这样不会有烦人的提示跑出来，参考The Protocol-relative URL</p><br>
+<p>WebpageTest</p><br>
+<p></p><br>
+<p>在挖官方文档和相关链接的时候偶然发现了这个好东西：WebpageTest，可以检测不同地点里多种浏览器（包括部分移动端浏览器）下页面载入的性能与网络IO，这样就可以为一些没有开发者工具的浏览器做profiling啦~</p><br>
+<p>Google Doctype</p><br>
+<p></p><br>
+<p>一些web开发小知识的集合，原来的地址已经挂了，不过在google code上存着镜像：Google Doctype的镜像</p><br>
+<p>--逆转序列的递归/尾递归（+destructuring assignment）实现（JavaScript + ES6） </p><br>
+<p></p><br>
+<p></p><br>
+<p></p><br>
+<p>这里是用 JavaScript 做的逆转序列（数组/字符串）的递归/尾递归实现。另外还尝鲜用了一下 ES6 的destructuring assignment + spread operator 做了一个更 functional 的版本（只支持数组）。</p><br>
+<p></p><br>
+<p>正确性能通过测试（参见 放在我 Github 上的 demo，顺手写了一个小小的测试框架），不过效率就要打问号了——特别是用了 ES6 特性的版本。这里主要是写来玩 JS 的函数式特性的。</p><br>
+<p>1. 逆转序列的递归实现</p><br>
+<p></p><br>
+<p>先用 Haskell 实现做草稿（因为比较自然），数组版长这样</p><br>
+<p></p><br>
+<p>reverse' :: [a] -> [a]</p><br>
+<p>reverse' []     = []</p><br>
+<p>reverse' (x:xs) = reverse' xs ++ [x]</p><br>
+<p></p><br>
+<p>在 JavaScript 里，数组和字符串都有 slice 和 concat，所以可以写成两种“序列”（在离散数学之类的领域里经常把两者合称为 sequence） 都支持的版本。</p><br>
+<p></p><br>
+<p>Note:</p><br>
+<p></p><br>
+    <p>Array.prototype.slice()</p><br>
+    <p>Array.prototype.concat()</p><br>
+    <p>String.prototype.slice()</p><br>
+    <p>String.prototype.concat()</p><br>
+<p></p><br>
+<p>均出现于 ECMAScript 3，实现于 JavaScript 1.2</p><br>
+<p></p><br>
+<p>对应的 JS 实现如下，把 base case 设定到序列长度小于 1 的时候，这样缩减了一步递归。相比而言还是 Haskell 版比较一目了然啊……</p><br>
+<p></p><br>
+<p>function recursiveReverse(seq) {</p><br>
+    <p>return seq.length > 1 ?</p><br>
+        <p>recursiveReverse(seq.slice(1)).concat(seq.slice(0, 1)) : seq;</p><br>
+<p>}</p><br>
+<p></p><br>
+<p>经过测试，数组和字符串都能通过。</p><br>
+<p>2. 尾递归实现</p><br>
+<p></p><br>
+<p>Haskell 版本长这样，用一个 ret 传递已完成的部分：</p><br>
+<p></p><br>
+<p>reverse' :: [a] -> [a]</p><br>
+<p>reverse' list = rev list []</p><br>
+  <p>where rev []     ret = ret</p><br>
+        <p>rev (x:xs) ret = rev xs (x:ret)</p><br>
+<p></p><br>
+<p>对应的 JS 版本，这里用 slice(0, 0) 来避开类型检查创建空序列。</p><br>
+<p>复制代码</p><br>
+<p></p><br>
+<p>function tailReverse(seq) {</p><br>
+    <p>return (function rev(seq, ret) {</p><br>
+        <p>return seq.length > 0 ?</p><br>
+            <p>rev(seq.slice(1), seq.slice(0, 1).concat(ret)) : ret;</p><br>
+    <p>})(seq, seq.slice(0, 0));</p><br>
+<p>}</p><br>
+<p></p><br>
+<p>复制代码</p><br>
+<p></p><br>
+<p>经过测试，数组和字符串都能通过。</p><br>
+<p>3. 使用 ES6 新特性的递归版本</p><br>
+<p></p><br>
+<p>ES6 引入了 destructuring assignment 和 spread operator，这样就可以部分地使用函数式编程中的模式匹配（pattern matching）。不过我在 ES6 的新特性里还没找到能在语法层面上让 JS 的函数像 Haskell 那样将模式匹配融合进重载（overloading）的组合（destructuring assignment 本身就是模式匹配的一个子集而已），要重载还是得用当前 JS 里最常见的解决办法——if-else或者三目运算符配合类型检查。这里因为用法简单，直接三目运算符就行。</p><br>
+<p></p><br>
+<p>配合 ES6 新特性实现的简单递归版如下，因为 JS 里数组和字符串没有通用的功能类似 append （往后加元素并返回新的数组）的函数，懒得折腾类型检查了，所以这里只实现了数组版（由于 destructuring assignment + spread operator 的组合[x, ...xs]会将字符串分割成第一个字符，[其他字符组成的数组]，因此直接给下面的函数传入字符串之后再将返回值 join 回字符串也可以达到一样的效果）。</p><br>
+<p></p><br>
+<p>function pmReverse([x, ...xs]) {</p><br>
+    <p>return typeof x === "undefined" ? [] : pmReverse(xs).concat([x]);</p><br>
+<p>}</p><br>
+<p></p><br>
+<p>经过测试，数组都可以正常逆转（只有在浏览器打开 ES6 特性的时候这个页面才会正常跑掉这个版本的测试，不然就只有一个 alert）。</p><br>
+<p>4. 使用 ES6 新特性的尾递归版本</p><br>
+<p></p><br>
+<p>function pmTailReverse(list) {</p><br>
+    <p>return (function rev([x, ...xs], ret) {</p><br>
+        <p>return typeof x === "undefined" ? ret : rev(xs, [x].concat(ret));</p><br>
+    <p>})(list, []);</p><br>
+<p>}</p><br>
+<p></p><br>
+<p>经过测试，数组都可以正常逆转（只有在浏览器打开 ES6 特性的时候这个页面才会正常跑掉这个版本的测试，不然就只有一个 alert）。</p><br>
+<p>关于测试页面</p><br>
+<p></p><br>
+<p>为了方便写了一个小小的测试框架，参见源代码。</p><br>
+<p></p><br>
+<p>因为不支持 ES6 的浏览器在解析 ES6 特性的代码时会出语法错误，用 try-catch 抓不了，这里用了 window.onerror 来捕捉并提示。不知为何我的 Chrome 开了实验性 JS 依然打不开 ES6 支持…… FireFox 倒是默认就能用。</p><br>
+<p>--跟随标准与Webkit源码探究DOM -- 获取元素之querySelector，querySelectorAll </p><br>
+<p></p><br>
+<p>使用CSS选择器获取元素 -- querySelector，querySelectorAll（HTML5）</p><br>
+<p>标准</p><br>
+<p></p><br>
+    <p>W3C Selector API Level 1为Document，DocumentFragment和Element追加了querySelector和querySelctorAll，原型为Element? querySelector(DOMString selectors)和 NodeList querySelectorAll(DOMString selectors)，说明了匹配的算法</p><br>
+    <p>W3C Selector API 2又追加了find和findAll，但目前在各大浏览器里暂无实现（这个标准目前还未进入recommendation）。</p><br>
+    <p>WHATWG DOM 将querySelector及querySelectorAll定义在了interface ParentNode并声明Document, DocumentFragment及Element均需实现这个interface，原型为Element? querySelector(DOMString selectors)与[NewObject] NodeList querySelectorAll(DOMString selectors)，并定义了scope-match的步骤。注意interface ParentNode还有用于获取相对位置的元素的两个方法query和queryAll，但目前在各大浏览器里暂无实现。</p><br>
+    <p>DOM4也新增了interface ParentNode，和WHATWG类似</p><br>
+<p></p><br>
+<p>注意点</p><br>
+<p></p><br>
+    <p>标准里强调了querySelectorAll返回的一定是一个static NodeList -- 也就是说如果将它的返回结果保存下来，当文档更新时，保存的NodeList里的元素不会跟着更新。</p><br>
+    <p>W3C Selector API Level 1 规定当传入的CSS选择器不合法时，会抛出SYNTAX_ERR异常。Selector API Level 2 和 WHATWG 改为了 SyntaxError。</p><br>
+    <p>按照W3C Selector API Level 1的提示，在选择器里使用pseudo-elements（目前只有:after，:before，:first-letter，:first-line，:selection）将不会匹配到任何元素，另外出于保护隐私的考虑，标准也推荐将所有链接视为未访问，即:visited不会匹配到任何元素。</p><br>
+    <p>无匹配元素时，querySelector返回null，querySelectorAll返回空的NodeList</p><br>
+    <p>有多个匹配元素时，querySelector返回按照document order（先序DFS）遍历到的第一个元素，querySelectorAll返回按照 document order 排序的NodeList</p><br>
+<p></p><br>
+<p>兼容性</p><br>
+<p></p><br>
+<p>IE 9+及其他浏览器的现行版本正常支持包括CSS3的选择器，IE8支持简单的 CSS2 选择器（如：不支持空格表示的后代）</p><br>
+<p>WebKit 代码分析</p><br>
+<p></p><br>
+<p>ContainerNode 就是 WHATWG 里描述的 interface ParentNode，ContainerNode的querySelector和querySelctorAll实际上分别调用SelectorQuery的queryFirst和queryAll（参考WebCore/dom/ContainerNode.cpp），它们又分别调用SelectorDataList的queryFirst和queryAll（注意这里的 queryAll 和标准里定义的不是一个东西。另外 SingleElementExtractorSelectorQueryTrait和AllElementExtractorSelectorQueryTrait这两个使用模版达到类似动态类型的写法挺有趣的），通过execute来对ContainerNode的子节点匹配CSS。execute里就是CSS选择器的代码，里面还有相当一部分 JIT 的优化，这里就不展开分析了。</p><br>
+<p></p><br>
+<p>在queryFirst用于SelectorQueryTrait的 template specialiation 的 SingleElementExtractorSelectorQueryTrait里，shouldOnlyMatchFirstElement设为true，注意execute用于匹配CSS的其他方法基本都会在第一次找到匹配元素的时候检查shouldOnlyMatchFirstElement确定是否立刻保存匹配结果并返回（使用elementDescendants达到先序DFS，elementDescendants最终也是和getElementsByID的实现一样使用到了NodeTraversal），这样就达到了标准里提到的返回先序DFS遇到的第一个匹配元素的要求。而queryAll使用了StaticElementList（StaticNodeList），来为保存匹配元素的Vector（属于WTF）创建一个 static 的快照用于返回（参见WebCore/dom/SelectorQuery.cpp）</p><br>
+<p></p><br>
+<p>NCZ的博客上讨论了为何StaticNodeList会相对慢很多（不过上面用的是几年前的代码，现在的代码用的是WTF的Vector的swap（底层调用std::swap）通过交换元素来实现复制，参见Source/WTF/wtf/Vector.h）</p><br>
+<p></p><br>
+<p>jQuery也有一个关于querySelectorAll性能问题的 Open issue。</p><br>
+<p>-- 跟随标准与Webkit源码探究DOM -- 获取元素之getElementsByClassName </p><br>
+<p></p><br>
+<p>按照类名获取元素 -- getElementsByClassName（HTML5）</p><br>
+<p>标准</p><br>
+<p></p><br>
+    <p>WHATWG 在Document与Element上均有定义，原型 HTMLCollection getElementsByClassName(DOMString classNames)，并定义了匹配算法和类名的提取算法，注意这里是先从参数里提取出类名作为一个set，然后再开始匹配的。其中指明了在quirks mode下类名大小写不敏感，否则大小写敏感</p><br>
+    <p>DOM 4（Document，Element ）基本和WHATWG一致</p><br>
+<p></p><br>
+<p>注意点</p><br>
+<p></p><br>
+<p>按照标准里的说法，“Unless otherwise stated, a collection must be live. ”。既然标准没有指明getElementsByClassName的返回值说是static的，那么它返回的HTMLCollection就是live的。</p><br>
+<p></p><br>
+<p>WHATWG描述getElementsByClassName的实现是先从参数里用ASCII空白字符分割出类名，将得到的类名组成一个有序集合之后，将能够匹配集合内所有类名的元素返回。除非在quirks mode否则大小写敏感，Document及Element上均有定义。</p><br>
+<p>兼容性</p><br>
+<p></p><br>
+    <p>属于HTML5新出现的API，IE9+ 及其他浏览器的现行版本均支持</p><br>
+<p></p><br>
+<p>WebKit代码分析</p><br>
+<p></p><br>
+<p>和之前的几个方法一样，在ContainerNode里实现，使用ClassNodeList作为NodeListsNodeData::addCacheWithAtomicName<>的template specialization。之前的一次commit将nodeMatches改为了elementMatches，不过github上的mirror里似乎ClassNodeList还没改掉。ClassNodeList的nodeMatches过滤标准（参考WebCore/dom/ClassNodeList.h）为：</p><br>
+<p>复制代码</p><br>
+<p></p><br>
+<p>if (!element->hasClass())</p><br>
+    <p>return false;</p><br>
+<p>if (!m_classNames.size())</p><br>
+    <p>return false;</p><br>
+<p>// FIXME: DOM4 allows getElementsByClassName to return non StyledElement.</p><br>
+<p>// https://bugs.webkit.org/show_bug.cgi?id=94718</p><br>
+<p>if (!element->isStyledElement())</p><br>
+    <p>return false;</p><br>
+<p>return element->classNames().containsAll(m_classNames);</p><br>
+<p></p><br>
+<p>复制代码</p><br>
+<p></p><br>
+<p>可以看到里面目前有个多余的StyledElement判定……这里首先判断要过滤的元素有没有class或者传入的字符串是否不含有效的class，接着检查元素是否为StyledElement（找不到相关文档，不过Node.h里的enum ConstructionType可以看出哪些元素是StyledElement）。</p><br>
+<p></p><br>
+<p>类名的提取实现在SpaceSplitString。ClassNodeList和ElementData均有SpaceSplitString的m_classNames来维护类名集合。这些外部的类通过调用SpaceSplitString::set来更新和设置类名，而SpaceSplitString::set又调用SpaceSplitStringData::create来维护存有集合的私有成员SpaceSplitStringData m_data。</p><br>
+<p></p><br>
+<p>SpaceSplitStringData::create有两个重载，外部调用的是SpaceSplitStringData::create (const AtomicString& keyString)。里面首先调用维护缓存的spaceSplitStringTable（实质是一个static的hashmap）来检查是否已经有缓存，如果没有则开始创建集合。 WebCore/dom/SpaceSplitString.cpp里的tokenizeSpaceSplitString实现了将类名字符串tokenize的算法，并且每分解出一个token，就会调用参数tokenProcessor的processToken。SpaceSplitStringData::create (const AtomicString& keyString)首先以TokenCounter作为tokenProcessor调用tokenizeSpaceSplitString，将类名字符串先扫描一次统计token数目以方便分配内存，接着调用重载的SpaceSplitStringData::create(const AtomicString& keyString, unsigned tokenCount)，里面使用TokenAtomicStringInitializer作为tokenProcessor再扫描一次字符串，将每个token的内容保存到分配好的内存里。</p><br>
+<p></p><br>
+<p>判断匹配的算法就比较粗暴了……参见WebCore/dom/SpaceSplitString.cpp的containsAll和WebCore/dom/SpaceSplitString.h的contains会发现，居然是线性查找套线性查找的O(mn)（m和n分别为要查找的类名数和被查找的元素的实际类名数）……不过考虑到应用场景下一般类名很少，多点也就五六个了，被查找的类名可能更少，乘起来mn可能最多也就二三十左右，一般大概不会超过十，此时用高级数据结构带来的overhead可能还大过简单的线性查找，所以这样实现也是合理的。</p><br>
+<p>--跟随标准与Webkit源码探究DOM -- 获取元素之getElementById </p><br>
+<p></p><br>
+<p>按照ID获取元素 -- getElementById</p><br>
+<p>标准</p><br>
+<p></p><br>
+    <p>DOM 1，定义在HTMLDocument Interface 中，原型Element getElementById(in DOMString elementId)，当不存在拥有对应ID的元素时返回null，该方法不会抛出任何异常。</p><br>
+    <p>DOM 2，移动到了Document（原HTMLDocument的Parent Interface），原型不变。</p><br>
+    <p>DOM 3 特别声明浏览器应当使用Attr.isId判断 Attr 是否为 ID，同时加了一句“Attributes with the name "ID" or "id" are not of type ID unless so defined.”，这是针对IE7-会将name为"id"的元素也一并返回的错误实现增加的说明</p><br>
+    <p>WHATWG 将getElementById 放到了 NonElementParentNode里，因此实现了NonElementParentNode的DocumentFragment也拥有这个方法（而W3C的标准里，DocumentFragment仅仅继承了Node，不应该有此方法）</p><br>
+    <p>DOM 4 目前与 WHATWG 相同</p><br>
+<p></p><br>
+<p>注意点</p><br>
+<p></p><br>
+    <p>注意 getElementById 的名字里没有全大写的 ID，而是id。</p><br>
+    <p>目前浏览器中 getElementById 仅定义在Document 和 DocumentFragment上，WHATWG的文档里提到没有添加到Element是为这个特性会挂掉未使用sizzle前的jQuery（<=1.2.6）的单元测试（旧版jQuery使用了elem.getElementById来判断元素是否为Document），参见邮件列表上的讨论。</p><br>
+    <p>没有插入 DOM （如用appendChild）的元素是无法用该方法搜索到的。由于前面提到的WHATWG与W3C标准的不同，现实中浏览器里的DocumentFragment也可以用此方法搜索元素。</p><br>
+    <p>一些浏览器会将带有id的元素创建成全局变量（比如id="foo"的元素会以window.foo出现在javascript runtime），并且为了向后兼容所以一直保留这个特性，但是它不在标准里，而且全局变量很容易被覆盖，应该尽量避免使用。</p><br>
+<p></p><br>
+    <p>标准里写明了当存在多个拥有对应 id 的元素时，浏览器的行为是未定义的，但是大多数浏览器都选择返回第一个拥有该 id 的元素。至于什么是“第一个”，就要看浏览器实现中的DOM树是怎么遍历的了。 WHATWG 里描述的是tree-order，即先序的DFS。</p><br>
+<p></p><br>
+    <p>检查方法：</p><br>
+    <p>复制代码</p><br>
+<p></p><br>
+    <p><!DOCTYPE html></p><br>
+    <p><html lang="en"></p><br>
+    <p><head></p><br>
+        <p><meta charset="UTF-8"></p><br>
+        <p><title>Document</title></p><br>
+    <p></head></p><br>
+    <p><body></p><br>
+        <p><div></p><br>
+            <p><div id="foo" class="a"></div></p><br>
+        <p></div></p><br>
+        <p><div id="foo" class="b"></div></p><br>
+    <p></body></p><br>
+    <p></html></p><br>
+<p></p><br>
+    <p>复制代码</p><br>
+<p></p><br>
+    <p>浏览器 console 运行</p><br>
+<p></p><br>
+    <p>document.getElementById('foo')</p><br>
+<p></p><br>
+    <p>Chrome，FireFox及IE均返回class="a"的div，即 WHATWG 中规定的先序DFS。</p><br>
+<p></p><br>
+<p>兼容性</p><br>
+<p></p><br>
+<p>IE7- 会将有与查询id相同的name的元素也算入，因此如果需要兼容 IE7-，可能需要做elem.id === id的判定。</p><br>
+<p>其他</p><br>
+<p></p><br>
+<p>DOM 2 中，id 定义在 HTMLElement上（DOM 3 没有 DOM HTML 标准），WHATWG 将 id 放在了 Element，定义都是attribute DOMString id，并说明了 id 属于global attribute。总之，在 HTML 里只要是元素就可以有id，并且可以通过 elem.id 的方式直接获取。</p><br>
+<p>Webkit 相关代码分析</p><br>
+<p></p><br>
+<p>Document 继承自 TreeScope，即WHATWG里提到的NonElementParentNode （参见WebCore/dom/Document.h），getElementById其实实现在TreeScope里，调用私有变量DocumentOrderedMap指针m_elementsById 的getElementById（WebCore/dom/TreeScope.h， WebCore/dom/TreeScope.cpp）。</p><br>
+<p></p><br>
+<p>DocumentOrderedMap的getElementById其实是get的包装，最终实现参见 WebCore/dom/DocumentOrderedMap.cpp</p><br>
+<p></p><br>
+<p>迭代器的继承结构是 descendantsOfType -> TypedElementDescendantIteratorAdapter -> TypedElementDescendantIterator，TypedElementDescendantIterator<ElementType>::operator++ 调用 ElementIterator<ElementType>::traverseNext ，参见TypedElementDescendantIterator.h。</p><br>
+<p></p><br>
+<p>ElementIterator<ElementType>::traverseNext 再调用 Traversal<ElementType>::next（WebCore/dom/ElementIterator.h），这里多态的ElementTraversal（继承Traversal）实际上又调用了NodeTraversal，NodeTraversal中 next的重载利用traverseNextTemplate实现。最后通过WebCore/dom/NodeTraversal.h可以看出访问顺序是 firstChild -> nextSibling -> nextAncestorSibling，也就是先序DFS，符合WHATWG里的描述。</p><br>
+<p>--跟随标准与Webkit源码探究DOM -- 获取元素之getElementsByTagName </p><br>
+<p></p><br>
+<p>按照标签名获取元素 -- getElementsByTagName</p><br>
+<p>标准</p><br>
+<p></p><br>
+    <p>DOM 1在Element和Document两个interface中均有定义，原型NodeList getElementsByTagName(in DOMString tagname)，指明按照先序遍历遇到的顺序排列，不会抛出任何异常，参数"*"返回对应document或者element下所有元素。注意这里指明返回的是一个live的仅含有Element的NodeList。</p><br>
+    <p>DOM 2里定义仍在Element和Document，增加了带namespace的NodeList getElementsByTagNameNS(in DOMString namespaceURI, in DOMString localName)（Element，Document），引入了localName的概念（只有ELEMENT_NODE和ATTRIBUTE_NODE才能有）。</p><br>
+    <p>DOM 3（Document，Element）特别声明XML应当对标签名的大小写敏感，非XML则依照文档类型自己对待大小写的风格来决定是否敏感。实际上浏览器对HTML都会先将标签转统一换成成小写后再去匹配，所以只能匹配到实际标签名为小写的元素。</p><br>
+    <p>WHATWG （Document ,Element）将返回类型修改为了HTMLCollection，并解释了通过localName产生HTMLCollection的算法。注意算法的第二步实际上规定了在非HTML文档里，标签名大小写敏感；而在HTML文档里，任何大小写的标签都会被统一转换成小写后再去匹配，所以只能匹配到实际标签名为小写的元素。</p><br>
+    <p>DOM 4（Document，Element） 目前与 WHATWG 基本一致</p><br>
+<p></p><br>
+<p>DOM Tree Accessors</p><br>
+<p></p><br>
+<p>DOM 1 与 DOM 2 的 HTMLDocument interface 里定义了一系列"DOM Tree Accessors"</p><br>
+<p></p><br>
+    <p>readonly attribute HTMLCollection images</p><br>
+    <p>readonly attribute HTMLCollection applets</p><br>
+    <p>readonly attribute HTMLCollection links</p><br>
+    <p>readonly attribute HTMLCollection forms</p><br>
+    <p>readonly attribute HTMLCollection anchors</p><br>
+    <p>attribute HTMLElement body</p><br>
+<p></p><br>
+<p>这意味着在HTML文档里可以用document.images获得所有<img>元素，用document.links获取所有带有href属性的<a>元素，用document.links获取所有带有name属性的<a>元素，用document.forms获取所有<form>元素。另外获取<body>可以使用document.body。</p><br>
+<p></p><br>
+<p>自 HTML5（W3C，WHATWG）开始还定义了document.head，删去了document.anchors，增加了获取<embed>的document.embeds和目前与之相同的document.plugins，以及获取(script)的document.scripts。</p><br>
+<p></p><br>
+<p>自 DOM 1 便在Document 定义了document.documentElement来获取根元素并保留至今，在HTML文档里即<html>元素。</p><br>
+<p>兼容性</p><br>
+<p></p><br>
+    <p>IE 5.5 不支持*作为参数获取所有元素。IE6以上的IE以及各大浏览器均按照标准实现了getElementsByTagName。</p><br>
+    <p>虽然document.scripts，document.embeds和document.plugins直到HTML5才标准化，不过各版本IE和其他浏览器的现行版本都支持</p><br>
+    <p>document.head需要IE9+才支持。其他DOM Tree Accessor基本在各版本IE和现行的浏览器里都有支持。</p><br>
+<p></p><br>
+<p>Webkit 代码分析</p><br>
+<p></p><br>
+<p>类似getElementsByName，getElementsByTagName在ContainerNode里实现。由于标准里对XML的特殊规定，这里会依据文档类型，换用TagNodeList或者HTMLTagNodeList作为NodeListsNodeData::addCacheWithAtomicName<>的template specialization（参见WebCore/dom/ContainerNode.cpp）。</p><br>
+<p></p><br>
+<p>TagNodeList实现的elementMatches是：</p><br>
+<p></p><br>
+<p>if (m_localName != starAtom && m_localName != element.localName())</p><br>
+    <p>return false;</p><br>
+<p>return m_namespaceURI == starAtom || m_namespaceURI == element.namespaceURI();</p><br>
+<p></p><br>
+<p>这里starAtom就是标准里说的*。先比对localName是否相符或为*，然后比对namespaceURI是否相符或为*。由于没有大小写转换步骤，所以遵循标准，是大小写敏感的。注意这里比对namespaceURI的步骤相对于getElementsByTagName是多余的，之所以加上是因为getElementsByTagNameNS也用TagNodeList，这样就可以偷懒不用再多写一个比对namespaceURI的版本。不过getElementsByTagNameNS用的其实是addCacheWithQualifiedName而不是addCacheWithAtomicName，其实addCacheWithQualifiedName和addCacheWithAtomicName的不同也就是它拿TagNodeList直接提前做好了template specification而已（参见WebCore/dom/NodeRareData.h）</p><br>
+<p></p><br>
+<p>HTMLTagNodeList实现的elementMatches是：</p><br>
+<p></p><br>
+<p>if (m_localName == starAtom)</p><br>
+    <p>return true;</p><br>
+<p>const AtomicString& localName = element.isHTMLElement() ? m_loweredLocalName : m_localName;</p><br>
+    <p>return localName == element.localName();</p><br>
+<p></p><br>
+<p>按照标准所说，如果被比对的元素是HTML namespace里的，转换为小写再比较。注意这里没有比对namespaceURI，毕竟getElementsByTagNameNS不用它（标准里没有指明getElementsByTagNameNS需要转换大小写，所以用TagNodeList那个大小写敏感的过滤足矣）。</p><br>
+<p>--Web开发入门知识小总结 </p><br>
+<p></p><br>
+<p>原来是写给 http://www.zhihu.com/question/22689579 的答案，也算是学了一学期web课程后的一点小总结，搬运到博客里存一下吧~</p><br>
+<p></p><br>
+<p>===============================================================</p><br>
+<p></p><br>
+<p>首先要知道网站访问大概是什么个过程：</p><br>
+<p>假设你在浏览器地址栏输入这个问题的地址</p><br>
+<p></p><br>
+<p>http://www.zhihu.com/question/22689579</p><br>
+<p></p><br>
+<p>访问过程和下图差不多，浏览器和服务器交流，服务器和数据库交流（有时候数据库就在服务器那台机子上）</p><br>
+<p></p><br>
+<p><img src="img/aboutWeb/aw01.png" alt=""></p><br>
+<p></p><br>
+<p></p><br>
+<p>HTML 与 CSS</p><br>
+<p>你家电脑拿到一个 html （就是上图 HTTP 响应的 body 里的内容）之后，就会对它进行解析渲染。HTML 就是一种标记语言。类比一下，大家在论坛上经常会用一些代码来添加富文本内容，举一些栗子：</p><br>
+<p></p><br>
+    <p><img>图片地址</img></p><br>
+<p></p><br>
+    <p>用来贴图</p><br>
+<p></p><br>
+    <p><url>超链接</url></p><br>
+<p></p><br>
+    <p>用来贴地址</p><br>
+<p></p><br>
+    <p><del>呵呵</del></p><br>
+<p></p><br>
+    <p>表示标签里的文字应该被删掉（默认添加删除线效果）</p><br>
+<p></p><br>
+<p>这种论坛代码也是一种标记语言，HTML 的作用就和它差不多。服务器返回给你的html文件里面，写的是一些代码，大概是这样的：</p><br>
+<p></p><br>
+<p><img src="img/aboutWeb/aw02.jpg" alt=""></p><br>
+<p></p><br>
+<p>浏览器拿到这些代码之后，分析一下给你渲染好页面显示出来，如果不用css，效果是这样的，按照浏览器默认的样式显示出列表、图片、超链接、输入框、按钮等等：</p><br>
+<p></p><br>
+<p><img src="img/aboutWeb/aw03.jpg" alt=""></p><br>
+<p></p><br>
+<p>是 不是觉得默认样式有点看瞎狗眼呢……所以很多时候我们需要自定义样式，现行通用的规定样式的语言是CSS，我们可以用它写一些定义样式的代码，然后在 html 文件里用一个<link>标签把这些规定样式的 CSS 代码与表达内容语义的 HTML 代码关联起来，然后你就能看到一个符合人类正常审美的页面了:</p><br>
+<p></p><br>
+<p><img src="img/aboutWeb/aw04.jpg" alt=""></p><br>
+<p></p><br>
+<p>CSS 代码的格式基本是</p><br>
+<p></p><br>
+<p>属性:值</p><br>
+<p></p><br>
+<p>比如知乎顶上那个蓝色的导航条，它的 CSS 大约是这样的</p><br>
+<p></p><br>
+<p><img src="img/aboutWeb/aw05.jpg" alt=""></p><br>
+<p></p><br>
+<p>第一个属性对应的代码翻译成人话，就是它的位置（position）应该是不动（fixed）的，浏览器会兢兢业业地去实现这段代码要求实现的效果， 所以你在页面上翻来翻去顶上那个导航条都会死死地黏在窗口顶部不跟着滚动。</p><br>
+<p>再拿里面的其他几个属性做栗子解释一下就是：</p><br>
+<p></p><br>
+    <p>left 和 top 为零指明这个导航条要紧贴着窗口的左上角</p><br>
+    <p>width 和 height 指定这个导航条的宽和高</p><br>
+    <p>background 指明这个导航条的背景是一种渐变的蓝色</p><br>
+<p></p><br>
+<p>浏览器就会根据这些 CSS 代码，“画”出对应的样式。</p><br>
+<p></p><br>
+<p>HTML 5 与 XHTML</p><br>
+<p>像 人的语言一样，网络上的网页里的 HTML 代码也不一定是标准的，好比有时候你发音不太标准，别人会去猜测你说的到底是什么一样，有些时候前端程序猿不小心写错了 HTML，浏览器也会试图猜测他们原来想写的是什么，做对应的渲染，而猜是要有一个常识做依据的。加上有些浏览器支持一些标签，有一些又不支持，以及其他 混乱的情况，为了防止大家鸡同鸭讲，我们需要对 HTML 代码里能有什么标签，标签怎么写，标签可以有什么属性这些东西有一定的共识，建立一个通行的标准，HTML5 就是其中一个比较新的标准。这个标准新加了很多可以用的标签和属性，然后各大浏览器也吭哧吭哧按这个标准去实现了很多这些新加的标签和属性，本来前端程序 员要写一堆代码去实现的效果，现在浏览器都给你实现好了，只要写两三行，调用一下浏览器给你实现的部分就能搞定，简单愉快，所以很多人都在热情地推广这个 标准~（当然新标准也不可能是完美的，总会有一些问题，怕跑题这里按下不表~）</p><br>
+<p></p><br>
+<p>至于 XHTML，就是 HTML 的近亲 XML 和 HTML 自己的杂交品种，对语法要求比较严格，并且为了兼容 XML，在语法上与 HTML 有一些不同~</p><br>
+<p></p><br>
+<p>JavaScript 与浏览器脚本</p><br>
+<p>有 了表示内容和语义的 HTML，规定样式的 CSS，得到的是一个静态的页面，没什么动画（其实用 CSS 还是可以有一些动画的，不过这个跑题了），按 F5 才会刷新数据，都 21世纪了，这么呆板单调的网页怎么能展现我大智人种族的创造性口胡！于是我们有了 Javascript（JS） 来给页面添加一些动态的效果，比如知乎问题的标签，鼠标移上去会弹出一个小窗口，这个就是 JS 实现的效果啦。</p><br>
+<p></p><br>
+<p></p><br>
+<p><img src="img/aboutWeb/aw06.jpg" alt=""></p><br>
+<p></p><br>
+<p>浏览器都会帮你实现一些 JS 可以用的工具（函数，对象什么的），你只要写一些 JS 的代码，保存在 xxx.js 里，在 html 文件中用 (script) 关联进来就可以用了，像上图这个效果应该就包括了</p><br>
+<p></p><br>
+    <p>鼠标悬停到标签上时创建一个新的 <div> 小窗口</p><br>
+    <p>用 JS 向知乎服务器发送一个请求，得到这个小窗口应该显示的数据，放在这个小窗口里（这就是所谓的AJAX，不用刷新就能与服务器进行交互，更新页面的一小部分~）</p><br>
+<p></p><br>
+<p>浏览器拿到这样的代码，就会解析并实现出相应的效果，楼主问的浏览器脚本，指的就是这样子的代码。其实用来写浏览器脚本的，也不是非得JavaScript 不可，当年还为到底用什么语言写这种代码有过一段战火纷飞的时期，但现在尘埃落定，各大浏览器都默认了：请用 JS 写这些动态效果的代码给我解析~</p><br>
+<p></p><br>
+<p>以上就是前端部分的内容，下面简述一下后端的东西吧> <</p><br>
+<p></p><br>
+<p>Web Server 和 Web Services</p><br>
+<p>浏览器给服务器发一个请求，服务器不是一看就知道怎么响应的。首先这些请求和响应要有一个通用的写法，也就是要有一个协议，常用的是 HTTP 协议。</p><br>
+<p>像 最前面的图，服务器的响应写了一个状态码 200 OK ，是 HTTP 协议里约定俗成的一个东西，服务器写 200 OK 在响应里，表示“你请求的这个东西我有”，如果是404 Not Found，就是“你请求的这个东西我这里没有”（有时候潜台词是：“你被墙了”……）。</p><br>
+<p>HTTP 响应里还包括很多东西，比如 Content-type 表示服务器发过来的文件类型是什么（文本？动画？图片？音频？），这样发过去了人家浏览器好知道怎么展示给用户看。人家服务器怎么知道按协议要写什么东西 进去呢，这就是 Web Server 干活的时候了。</p><br>
+<p></p><br>
+<p>形象化一下HTTP响应，大概就长这样：</p><br>
+<p></p><br>
+<p></p><br>
+<p><img src="img/aboutWeb/aw07.png" alt=""></p><br>
+<p></p><br>
+<p>再上个锤子，浏览器和服务器之间请求响应的过程大致是长这样的，右下角的那些东西就是由 Web Server 生成的（服务器脚本可以做一些改动，但这些一般是 Web Server 的份内活）：</p><br>
+<p></p><br>
+<p><img src="img/aboutWeb/aw08.jpg" alt=""></p><br>
+<p></p><br>
+<p>再比如说很多时候你访问一个网站，浏览器里输的地址并没有写明你请求的文件，比如这个问题的地址是：</p><br>
+<p></p><br>
+<p>http://www.zhihu.com/question/22689579</p><br>
+<p></p><br>
+<p>但知乎的服务器其实返回了一个html给你，服务器怎么知道这个地址对应要返回什么样的 html 代码给你的？也是 Web Server 干的活。</p><br>
+<p></p><br>
+<p>除了浏览器输地址敲回车这种赤裸裸的访问，客户端与服务器的交互还有很多种，比如：</p><br>
+<p></p><br>
+    <p>前面提到的用 JS 完成的 AJAX，有点像浏览器和服务器之间的悄悄话~</p><br>
+<p></p><br>
+<p>还有其他应用软件与服务器的交互，比如：</p><br>
+<p></p><br>
+    <p>微信、QQ 与腾讯的服务器的交互</p><br>
+    <p>网游客户端与网游公司服务器的交互</p><br>
+    <p>搜索引擎用来搜集网页信息的程序（爬虫）与各种各样的网站服务器的交互</p><br>
+    <p>只要你知道用什么地址访问、怎样访问人家的服务器，并且有相应权限，你也可以自己写一些程序去和他们的服务器交互（比如用微博API - 新浪微博API获取微博，开发第三方应用或者做数据分析）。</p><br>
+<p></p><br>
+<p>从这些栗子里可以看出，客户端与服务器的交互的主体、客体、载体是五花八门的：</p><br>
+<p></p><br>
+    <p>服务器可以是大型机也可以是个人电脑，只要能跑相应的程序就行</p><br>
+    <p>客户端像前面举的栗子里一样，可以是各种软件，而且这些软件不一定运行在个人电脑上，也可以是手机、平板、智能穿戴设备等等</p><br>
+    <p>有时候不是传生成好的 HTML 或者其他服务器上已经有的文件，而是传输经过一定逻辑处理后生成的字符串或者其他各种封装好的数据</p><br>
+<p></p><br>
+<p>像 前面提到的 HTML 需要有一定标准一样，为了防止混乱和鸡同鸭讲，我们又需要先对这些机器需要怎么交互达成一定共识，再让它们进行交流。人与人之间通信，需要先有一种大家都 认识的写法（比如简体字/繁体字）和一种彼此都懂的语言（比如普通话/广东话）。要让这些形形色色的机器能够通过网络进行交互，我们就需要指明一种协议 （比如 HTTP/HTTPS）和一种数据封装格式（比如 HTML/XML），Web Server 提供的 Web Service，指的就是这种协议+格式的交流体系。不过 Web Service 的生态系统和 HTML 的标准不一样，用户可以选择的协议和数据封装格式更多，普通的网站访问用的 HTTP + HTML 只是其中一种，一些封闭系统内的交流还可以自己定义一个协议和格式来用（比如 QQ）。</p><br>
+<p></p><br>
+<p>Web Service 传输的数据再经由本地客户端（浏览器、QQ/微信，网游客户端等）的分析渲染，就能够以普通人能够理解的形式展现出来。此外还有一些 Web Service 并不是为普通用户设计的，像前面提到的微博API，是用来给程序猿进行二次开发的~</p><br>
+<p></p><br>
+<p>除 了提供 Web Service， Web Server 还会兼顾很多功能，包括提供缓存，平衡负载，这样在访问量比较大的时候能有有条不紊地接客。常见的现成的 Web Server 有开源的 Apache、Nginx和微软的IIS，你也可以用一些工具（比如 Node.js ）自己定制一个。</p><br>
+<p></p><br>
+<p>PHP ，服务器脚本，Web Framework</p><br>
+<p>开 头那张图里服务器接到请求之后可以给访客发送对应的文件，但21世纪的服务器怎么可能只会“接请求-发文件”这么弱智的一招呢，人家还可以处理你上传来的 文件的！还可以接受你发过来的各种请求，去操作服务器本地的文件or数据库的！要干这些事，自然服务器那边也少不了要有代码了，这些代码就是服务器脚本。 前面说的 Web Service 传输的数据，主要也是由服务器脚本生成，再交由 Web Server ，按照某种协议套好整个响应的格式，返回给客户端的。</p><br>
+<p></p><br>
+<p>同一个网址，每个人看到的页面不一定是一样的，比如知乎首页的网址都是</p><br>
+<p></p><br>
+<p>http://www.zhihu.com/</p><br>
+<p></p><br>
+<p>但是没登陆和登陆之后看到的东西不一样，登陆之后每个人看到的导航栏的用户信息，关注的动态，都不一样。服务器脚本可以对这些不同的状态，生成不同的页面，交给 Web Server 返回给浏览器。</p><br>
+<p>知乎的主页给大家看到的 html 整体来说是差不多的，都有导航栏，左边是关注的动态，右边是广告和边栏，每一块的整体构造大同小异，只是一些地方内容有所区别。服务器脚本就是利用已知的数据，在这些因人而异的地方填入相应的内容，生成给每个人看的页面。</p><br>
+<p>比 如我的主页，导航栏右边的头像和名字跟别人看到的不一样，就是因为这块地方有一个放图片的<img>标签和一个写名字 的<span>标签，服务器脚本在查询本地的数据之后给我返回的页面里<img>的标签填了我头像的图片链 接，<span>标签里填了我的名字，给别人的页面就填其他链接、其他名字，这样每个人看到的页面就不一样了。</p><br>
+<p></p><br>
+<p></p><br>
+<p><img src="img/aboutWeb/aw09.jpg" alt=""></p><br>
+<p></p><br>
+<p>PHP 就是一种常见的用来写服务器脚本的语言，其实只要是能拿来写大家传输数据的通用接口（CGI）的语言都可以用来写服务器脚本（也就是说几乎所有编程语言都 可以写 = =b），只是因为现成工具的丰富程度和专攻程度不一样，所以有一些语言在写服务器端脚本的时候会比较热门。</p><br>
+<p></p><br>
+<p></p><br>
+<p>为了方便，我们在 写服务器脚本的时候，通常还会用个同语言写的 Web Framework 来处理各种细节，防御一些常见的攻击，提供跨站认证（比如用已有的微博账号注册其他网站）的接口，利用cookie处理登陆状态和用户设置，生成网页模版 之类的。如果你用 C# 或者 Visual Basic 写服务器脚本，就可以用 ASP.NET 这个框架实现这些功能，帮你省点麻烦。不过现在不少人是反过来为了一个好用的 Web Framework 去选择它对应的服务器脚本语言的。</p><br>
+<p></p><br>
+<p>一个普通网站访问的过程</p><br>
+<p>简单概括一下，对于我们普通的网站访问，涉及到的技术就是：</p><br>
+<p></p><br>
+    <p>用户操作浏览器访问，浏览器向服务器发出一个 HTTP 请求；</p><br>
+    <p>服务器接收到 HTTP 请求，Web Server 进行相应的初步处理，使用服务器脚本生成页面；</p><br>
+    <p>服务器脚本（利用Web Framework）调用本地和客户端传来的数据，生成页面；</p><br>
+    <p>Web Server 将生成的页面作为 HTTP 响应的 body，根据不同的处理结果生成 HTTP header，发回给客户端；</p><br>
+    <p>客户端（浏览器）接收到 HTTP 响应，通常第一个请求得到的 HTTP 响应的 body 里是 HTML 代码，于是对 HTML 代码开始解析；</p><br>
+    <p>解析过程中遇到引用的服务器上的资源（额外的 CSS、JS代码，图片、音视频，附件等），再向 Web Server 发送请求，Web Server 找到对应的文件，发送回来；</p><br>
+    <p>浏览器解析 HTML 包含的内容，用得到的 CSS 代码进行外观上的进一步渲染，JS 代码也可能会对外观进行一定的处理；</p><br>
+    <p>用户与页面交互（点击，悬停等等）时，JS 代码对此作出一定的反应，添加特效与动画；</p><br>
+    <p>交 互的过程中可能需要向服务器索取或提交额外的数据（局部的刷新，类似微博的新消息通知），一般不是跳转就是通过 JS 代码（响应某个动作或者定时）向 Web Server 发送请求，Web Server 再用服务器脚本进行处理（生成资源or写入数据之类的），把资源返回给客户端，客户端用得到的资源来实现动态效果或其他改变。</p><br>
+<p></p><br>
+<p>注意这只是小网站里比较常见的模型，大网站为了解决规模问题还会有很多处理，每个环节都会有一些细微的差异，中间还会使用各种各样的工具减轻服务器的压力，提高效率，方便日常维护~</p><br>
+<p></p><br>
+<p>延伸阅读 —— 那些看花眼的名词</p><br>
+<p>为了方便调试，很多 Web Framework 会自带一个简单的 Web Server，或者有些 Web Server 会自带一个简单的 Web Framework ，实际部署到服务器上开放使用的时候为了性能或者安全等多方面的考虑，可以把内置的 Web Server 换成其他的，比如 Apache 或者 Nginx （举个栗子，知乎用的是 Tornado 做 Framework，Server 换成了 Nginx，见知乎使用了哪些框架和开源库？）。如果是开源的东西，还可以在遵守开源协议的前提下自己改一下再用~</p><br>
+<p></p><br>
+<p>因为后端不像前端已经有 HTML + CSS + JS 这样的既定事实标准，服务器脚本与 Web Framework 的选择很多，所以新手会听到很多眼花缭乱的技术名词的地方多在这里~ 举一些栗子，早年常见的服务器脚本语言有：</p><br>
+<p></p><br>
+    <p>开源的 PHP</p><br>
+    <p>Sun 公司的 JSP 中使用的 Java</p><br>
+    <p>微软的 ASP 中使用的 VBScript</p><br>
+<p></p><br>
+<p>现在在这方面的应用热起来的语言有</p><br>
+<p></p><br>
+    <p>Python，对应常见的 Framework 包括知乎和Quora有用到的 Tornado（其实是自带 Framework 的 Web Server），社区很成熟的 Django （用户包括 Instagram、Pinterest）等</p><br>
+    <p>Ruby，一般都用 Rails 这个 Framework，用户包括 Github、早期的 Twitter 等</p><br>
+    <p>逆天的 JavaScript，有了 Node.js 这个平台，Web Server、服务器脚本和浏览器脚本全都可以用 JavaScript 来写……</p><br>
+    <p>微软家的则跟着 ASP.NET 转移到了C# 或者 Visual Basic</p><br>
+    <p>Erlang，擅长大规模的并发，不少游戏公司拿来写服务器，靠几十个工程师支撑几亿用户的WhatsApp也是用的这个~</p><br>
+<p></p><br>
+<p>虽然可以用的语言和所属体系五花八门，其实服务器脚本要做的事情本质上都差不多的，就好比自然世界中要表达“吃过了没”这句话的意思，你可以用各种各样的语言在各种各样的场景里表达出来~</p><br>
+<p></p><br>
+<p>--跟随 Web 标准探究DOM -- Node 与 Element 的遍历</p><br>
+<p></p><br>
+<p>写在前面</p><br>
+<p></p><br>
+<p>这篇没有什么 WebKit 代码的分析，因为……没啥好分析的，在实现里无非就是树的（先序DFS）遍历而已，囧哈哈哈……在WebCore/dom/Node.h ， WebCore/dom/ContainerNode.h 和 WebCore/dom/Element.h 以及对应的 .cpp 里看两眼就行了。下面这些属性一般都作为了私有变量直接放在了对象里（按照命名规范基本都叫m_xxx），然后通过和标准同名的 public 方法返回。不过要注意一下它们放在了哪里，比如Node里和子节点相关的方法一般定义到了 ContainerNode.h，Node 里需要意识到 Element 存在的方法一般放去了 Element.h （即使定义时是Node::xxx 这样的）。</p><br>
+<p></p><br>
+<p>这篇主要分析一下对作为 Node 的元素和作为 Element 的元素进行遍历的不同，以及总结一下各浏览器对这些 API 的兼容性。</p><br>
+<p>Node 的遍历</p><br>
+<p></p><br>
+<p>Node 继承 EventTarget，Document，DocumentFragment，Element继承Node，所以下面提到的属性Document，DocumentFragment，Element都可以用。</p><br>
+<p>Node.parentNode</p><br>
+<p>标准</p><br>
+<p></p><br>
+<p>DOM 1定义在 Node interface，原型readonly attribute Node parentNode，指明Document，DocumentFragment，Attr 和不在树中的 node 的 parentNode 为 null。</p><br>
+<p></p><br>
+<p>DOM 2，DOM 3，WHATWG，DOM 4 都和 DOM 1 一致</p><br>
+<p>注意点</p><br>
+<p></p><br>
+<p>这是一个只读属性，所以不能通给一个元素的parentNode赋值来移动它，任何对这个引用的赋值操作都会被无视。比如：</p><br>
+<p></p><br>
+<p>node.parentNode = anotherNode;</p><br>
+<p>console.log(node.parentNode === anotherNode); // false</p><br>
+<p></p><br>
+<p>但是你可以修改它的parentNode的属性。</p><br>
+<p></p><br>
+<p>node.parentNode.title = "foo";</p><br>
+<p>console.log(node.parentNode.title); // foo</p><br>
+<p></p><br>
+<p>此外，Document 和 Attr 没有parentNode还好理解，但是 Attr 没有就有点不好理解了，而且Entity 和Notation也是没有的 —— 反向理解，Node.childNodes也是不算 attribute node，entity node 之类的，人家不把你当孩子，你也没必要把人家当父母。</p><br>
+<p></p><br>
+<p>没有 parent 的 Node（比如刚刚用createElement创建或者用removeChild删除）的这个属性是 null。</p><br>
+<p>兼容性</p><br>
+<p></p><br>
+<p>IE8- 里的 parentNode 有几个 bug：</p><br>
+<p></p><br>
+<p>新创建的元素的 parentNode 是 null，但修改过内容（比如用innerHTML或者appendChild）之后就会变成 DocumentFragment</p><br>
+<p></p><br>
+<p>var foo = document.createElement('div');</p><br>
+<p>console.log(foo.parentNode);  // null</p><br>
+<p>foo.innerHTML = "bar"</p><br>
+<p>console.log(foo.parentNode);  // [object HTMLDocument]</p><br>
+<p>console.log(foo.parentNode.nodeType);  // 11 = DocumentFragment</p><br>
+<p></p><br>
+<p>从文档中删掉的节点，parentNode是DocumentFragment。对如下 HTML：</p><br>
+<p></p><br>
+<p><div id="foo"></p><br>
+    <p><div id="bar"></div></p><br>
+<p></div></p><br>
+<p></p><br>
+<p>执行 JS：</p><br>
+<p></p><br>
+<p>var foo = document.getElementById('bar');</p><br>
+<p>console.log(foo.parentNode);  // [object HTMLDivElement]</p><br>
+<p>foo.parentNode.removeChild(foo);</p><br>
+<p>console.log(foo.parentNode);  // [object HTMLDocument]</p><br>
+<p>console.log(foo.parentNode.nodeType);  // 11 = DocumentFragment</p><br>
+<p></p><br>
+<p>Node.firstChild 和 Node.lastChild</p><br>
+<p>标准</p><br>
+<p></p><br>
+<p>DOM 1（firstChild，lastChild）定义在 Node interface，原型readonly attribute Node firstChild和readonly attribute Node lastChild，指明Document，DocumentFragment，Attr 和不在树中的 node 的 parentNode 为 null。</p><br>
+<p></p><br>
+<p>DOM 2（firstChild，lastChild），DOM 3（firstChild，lastChild）， WHATWG （firstChild，lastChild），DOM 4（firstChild，lastChild） 和 DOM 1 一致</p><br>
+<p>注意点</p><br>
+<p></p><br>
+<p>这是一个只读属性，和parentNode一样是不能重新赋值的。</p><br>
+<p></p><br>
+<p>注意浏览器可能（而且很多都）将 text node 和 comment node 算在一个 node 的 child nodes 里（HTML 文本里的缩进和断行都会算成新的 text node 夹杂在元素之间），并且 document.firstNode 可能是 doctype，因此不能判定 firstChild 返回的是一个元素，如果想得到第一个元素的话，需要手动检查nodeType并往后过滤。</p><br>
+<p></p><br>
+<p>CSS pseudo element 不会被算入。</p><br>
+<p></p><br>
+<p>W3C FAQ 解释了为什么有 DOM 的实现会将空白字符算作 text node：</p><br>
+<p></p><br>
+<p>DOM 必须将处理过的 XML （且为了方便，很多 DOM 的实现会将 XML 与 HTML 的许多处理合并）原文全部交给应用，空白字符也不能丢掉（这样 DOM 树与 XML 文本才能完成一一映射），那么就应该找个类型的 node 将它塞进去了 -- 最合适的就是 text node。</p><br>
+<p>兼容性</p><br>
+<p></p><br>
+<p>IE 8- 不将空白的 text node 算作子节点，IE 9+及其他浏览器都算。对如下HTML：</p><br>
+<p></p><br>
+<p></p><br>
+<p>执行 JS：</p><br>
+<p></p><br>
+<p>var foo = document.getElementById('foo');</p><br>
+<p>console.log(foo.firstChild);  // null in IE8-, supposed be a text node</p><br>
+<p></p><br>
+<p>Node.nextSibling 和 Node.previousSibling</p><br>
+<p>标准</p><br>
+<p></p><br>
+<p>DOM 1（previousSibling，nextSibling）定义在 Node interface，原型readonly attribute Node previousSibling和readonly attribute Node nextSibling，不存在对应 node 的返回 null。</p><br>
+<p></p><br>
+<p>DOM 2（previousSibling，nextSibling），DOM 3（previousSibling，nextSibling）和 DOM 1 一致。</p><br>
+<p></p><br>
+<p>WHATWG （previousSibling，nextSibling） 和 W3C DOM 一致，另外说明了 sibling 的概念 和 树中相对位置的概念（按照tree order，即先序DFS）</p><br>
+<p></p><br>
+<p>DOM 4（previousSibling，nextSibling）和 WHATWG 一致。</p><br>
+<p>注意点</p><br>
+<p></p><br>
+<p>和Node.firstChild 与 Node.lastChild的注意事项类似。</p><br>
+<p>兼容性</p><br>
+<p></p><br>
+<p>IE 8- 不将空白的 text node 算作 sibling，IE 9+及其他浏览器都算。</p><br>
+<p></p><br>
+<p>HTML：</p><br>
+<p></p><br>
+<p></p><br>
+<p>JS:</p><br>
+<p></p><br>
+<p>var foo = document.getElementById('foo');</p><br>
+<p>// [object HTMLDivElement] in IE8-, supposed to be a text node</p><br>
+<p>console.log(foo.previousSibling);</p><br>
+<p></p><br>
+<p>Node.childNodes</p><br>
+<p>标准</p><br>
+<p></p><br>
+<p>DOM 1定义在 Node interface，原型readonly attribute NodeList childNodes，指明了返回的 NodeList 是 live 的，且如果没有子节点时返回空的 NodeList.</p><br>
+<p></p><br>
+<p>DOM 2，DOM 3 和 DOM 1 一致。</p><br>
+<p></p><br>
+<p>WHATWG 原型 [SameObject] readonly attribute NodeList childNodes，和 W3C DOM 一致。DOM 4 和 WHATWG 一样。</p><br>
+<p>注意点</p><br>
+<p></p><br>
+<p>和Node.firstChild 与 Node.lastChild的注意事项类似。返回的NodeList元素是只读的（可以改元素属性，不可以改引用）。要增删子元素的话对childNodes动脑筋是没用的……（注意：其他浏览器对childNodes中引用的修改仅仅是无视，但 IE 会怒报错）</p><br>
+<p></p><br>
+<p>HTML：</p><br>
+<p></p><br>
+<p><div id="foo"><p></p></div></p><br>
+<p></p><br>
+<p>JS：</p><br>
+<p>复制代码</p><br>
+<p></p><br>
+<p>var foo = document.getElementById('foo');</p><br>
+<p>console.log(foo.childNodes.length);  // 1</p><br>
+<p></p><br>
+<p>var bar = document.createElement('div');</p><br>
+<p></p><br>
+<p>foo.childNodes[0] = bar;  // attempt to replace a child, throws error in IE</p><br>
+<p>console.log(foo.childNodes[0].nodeName);  // "P", not replaced</p><br>
+<p></p><br>
+<p>foo.childNodes[1] = bar;  // attempt to add a child, throws error in IE</p><br>
+<p>console.log(foo.childNodes.length);  // 1, not added</p><br>
+<p></p><br>
+<p>delete foo.childNodes[0];  // attempt to delete a child, throws error in IE</p><br>
+<p>console.log(foo.childNodes.length);  // 1, not deleted</p><br>
+<p></p><br>
+<p>复制代码</p><br>
+<p></p><br>
+<p>一般document.childNodes 只有 doctype 和 <html>元素，除非原文两者之间有注释。</p><br>
+<p></p><br>
+<p>元素的排列顺序是 document order，即按照 DOM 树中的先序 DFS 排列。</p><br>
+<p>兼容性</p><br>
+<p></p><br>
+<p>IE 8- 不将空白的 text node 算作子节点，IE 9+及其他浏览器都算。</p><br>
+<p></p><br>
+<p>HTML：</p><br>
+<p></p><br>
+<p><div id="foo">   </div></p><br>
+<p></p><br>
+<p>JS:</p><br>
+<p></p><br>
+<p>var foo = document.getElementById('foo');</p><br>
+<p>// 0 in IE8-, supposed to be 1</p><br>
+<p>console.log(foo.childNodes.length);</p><br>
+<p></p><br>
+<p>Element 的遍历</p><br>
+<p></p><br>
+<p>Element 与 Node 的区别在于 Element 不包括 text node，comment node，etc. 实际上，Element 继承自 Node，也就是说它本来就是 Node 的一种。Element 都具备（或者说，应该具备） Node.nodeType == Node.ELEMENT_NODE 这个特性（还有其他哪几种nodeType参阅WHATWG标准，这里先不展开叙述）。以下的几种 API 可以看成 Node 版的 API 加上对结果进行Node.nodeType == Node.ELEMENT_NODE过滤（实际上 WebKit 的实现也基本都是这样干的）。</p><br>
+<p></p><br>
+<p>注意作为 Element 的遍历 API 基本都属于 HTML5 的新特性，W3C 标准里一般都只能在 DOM 4 里找到。</p><br>
+<p>Node.parentElement</p><br>
+<p>标准</p><br>
+<p></p><br>
+<p>WHATWG 将 parentElement 定义在了 Node ，原型readonly attribute Element? parentElement。W3C DOM 4 也一样。</p><br>
+<p></p><br>
+<p>乍一看，定义在Node似乎有点怪，不过仔细一想其实是很合理的 —— Element 的子节点不一定是 Element，譬如 text node。你不能阻碍人家寻亲的能力啊 :D</p><br>
+<p>注意点</p><br>
+<p></p><br>
+<p>如果 Node 的父元素不是 Element，返回的是 null。</p><br>
+<p>兼容性</p><br>
+<p></p><br>
+<p>实际上 parentElement 一开始是 IE 特有的（起码从 IE6 开始就有了），但 IE 仅为 Element 定义了这个属性（即是说 text node 之类的是不能用的）。此后这个属性进入了标准，目前基本各大浏览器都支持它，主要的兼容性问题出现在 IE 不支持非 Element 的 Node 使用这个属性。如果仅对 Element 使用它的话，是可以放心用的。</p><br>
+<p></p><br>
+<p>此外由于 IE8- 中 parentNode 有不轻的 bug（见前文），在只需要 Element 的场景下，可能用 parentElement 是更好的选择。</p><br>
+<p>ParentNode.firstElementChild 和 ParentNode.lastElementChild</p><br>
+<p>标准</p><br>
+<p></p><br>
+<p>目前 WHATWG 将 firstElementChild和lastElementChild 定义在了 ParentNode，原型为</p><br>
+<p></p><br>
+<p>readonly attribute Element? firstElementChild;</p><br>
+<p>readonly attribute Element? lastElementChild;</p><br>
+<p></p><br>
+<p>它们原本在ElementTraversal，后来为了降低耦合，WHATWG 将 ElementTraversal 按照功能分割成了两个 interface ParentNode，ChildNode，而 firstElementChild和lastElementChild自然就挪去了针对有子元素的Node设置的ParentNode。</p><br>
+<p></p><br>
+<p>目前继承 ParentNode 的包括Document，Element 和 DocumentFragment，所以这三个 interface 的对象是可以访问firstElementChild和lastElementChild的。</p><br>
+<p></p><br>
+<p>W3C DOM4 和 WHATWG 一致，但是注意 DOM4 目前还不是 W3C Recommendation。目前处于 W3C Recommendation 状态的标准里， firstElementChild和lastElementChild仍然定义在 ElementTraversal。按照 Element Traversal 标准的规定，所有的 Element 都必须实现 ElementTraversal，但对其他 interface 不作要求。</p><br>
+<p></p><br>
+<p>因此，这两个属性在 WHATWG 和 W3C 的标准里存在分歧：WHATWG 标准中，Document，Element 和 DocumentFragment 均有这两个属性；W3C 标准中，目前仅有 Element 具有这两个属性。但因为和 WHATWG 一致的 DOM4 将来很有可能成为 W3C Recommendation，W3C 标准最后很有可能会和 WHATWG 一样，三种对象均有这两个属性。</p><br>
+<p>注意点</p><br>
+<p></p><br>
+<p>如果没有子元素，返回的是 null。这两个属性也是只读的，可以在子元素上修改它的属性，但不可更改引用（会被无视）。</p><br>
+<p>兼容性</p><br>
+<p></p><br>
+<p>由于属于较新的 API，在Element上的使用要 IE 9+ 才支持，其他浏览器的现行版本都有支持。</p><br>
+<p></p><br>
+<p>因为在 WHATWG 和 W3C 的现行标准里存在分歧，Document 和 DocumentFragment 对这两个属性的支持在各浏览器中不太一致。偏 WHATWG 的 Chrome，Firefox 和 Opera 支持 Document，Element 和 DocumentFragment，IE 9+ 和 Safari 仅支持 Element。考虑到 DOM4 将来应该会成为 W3C Recommendation，最后应该是三个 interface 都能支持的（当然，IE 就不能指望旧版本支持了……）</p><br>
+<p>NonDocumentTypeChildNode.nextElementSibling 和 NonDocumentTypeChildNode.previousElementSibling</p><br>
+<p>标准</p><br>
+<p></p><br>
+<p>在 WHATWG 标准里，和为了照顾 jQuery 兼容性而为getElementById 专门设一个 NonElementParentNode （而不是ParentNode）类似，为了照顾现存网页的兼容性，nextElementSibling 和 previousElementSibling 被定义在了一个专门分出来的 NonDocumentTypeChildNode（而不是ChildNode）里，参见 bug tracker上的讨论。</p><br>
+<p></p><br>
+<p>目前 NonDocumentTypeChildNode 的定义如下：</p><br>
+<p>复制代码</p><br>
+<p></p><br>
+<p>[NoInterfaceObject]</p><br>
+<p>interface NonDocumentTypeChildNode {</p><br>
+  <p>readonly attribute Element? previousElementSibling;</p><br>
+  <p>readonly attribute Element? nextElementSibling;</p><br>
+<p>};</p><br>
+<p>Element implements NonDocumentTypeChildNode;</p><br>
+<p>CharacterData implements NonDocumentTypeChildNode;</p><br>
+<p></p><br>
+<p>复制代码</p><br>
+<p></p><br>
+<p>注：目前 WHATWG 标准里 ParentNode，NonElementParentNode，ChildNode 和 NonDocumentTypeChildNode 之间的关系如下图：</p><br>
+<p></p><br>
+<p><img src="img/aboutWeb/aw10.png" alt=""></p><br>
+<p></p><br>
+<p>W3C DOM4 与 WHATWG 一致，但与ParentNode.firstElementChild 和 ParentNode.lastElementChild的情况类似的是，按照目前处于 W3C Recommendation 的 Element Traversal 的定义，只有 Element 拥有这两个属性，CharacterData 没有。</p><br>
+<p>注意点</p><br>
+<p></p><br>
+<p>类似 ParentNode.firstElementChild 和 ParentNode.lastElementChild。</p><br>
+<p>兼容性</p><br>
+<p></p><br>
+<p>也与 ParentNode.firstElementChild 和 ParentNode.lastElementChild类似，需要 IE9+。Chrome，Firefox 和 Opera 支持 Element 和 CharacterData上访问这两个属性，IE 9+ 和 Safari 仅支持 Element， 如果 W3C DOM 4 进入 Recommendation，很可能会统一。</p><br>
+<p>ParentNode.childElementCount</p><br>
+<p>标准</p><br>
+<p></p><br>
+<p>WHATWG / DOM4 定义在 ParentNode，原型readonly attribute unsigned long childElementCount。W3C Recommendation 里目前定义在 ElementTraversal，原型和 WHATWG 一样。</p><br>
+<p>注意点</p><br>
+<p></p><br>
+<p>在符合标准的实现里，约等于 container.children.length。</p><br>
+<p>兼容性</p><br>
+<p></p><br>
+<p>和 ParentNode.firstElementChild 的情况类似，需要 IE9+，Chrome，Firefox 和 Opera 支持 Document，Element 和 DocumentFragment，IE 9+ 和 Safari 仅支持 Element。</p><br>
+<p>ParentNode.children</p><br>
+<p>标准</p><br>
+<p></p><br>
+<p>虽然这个 API 很早就存在，但直到最近才标准化。WHATWG / DOM4 定义在ParentNode，原型[SameObject] readonly attribute HTMLCollection children，指明是一个 live 的 HTMLCollection 而不是NodeList，也就是说元素必然全是 Element（历史遗留问题带来的囧命名，和Node那边的名字对不上号，不叫childElements而叫children，不叫ElementList而叫HTMLCollection……）。</p><br>
+<p>注意点</p><br>
+<p></p><br>
+<p>类似 Node.childNodes，得到的 HTMLCollection 是 live 且（引用）只读的。</p><br>
+<p>兼容性</p><br>
+<p></p><br>
+<p>该属性最早出现在 IE 中，IE6 开始具备这个属性。此后各大浏览器跟着实现，Firefox是最后一个实现这个属性的主要浏览器（3.5开始，也蛮久了）。但是由于 WHATWG 标准的接受度不同，Chrome，Firefox 和 Opera 在支持 Document，Element 和 DocumentFragment上使用该属性，IE 和 Safari 仅支持 Element。 Chrome 和 Firefox 还实验性地支持在 SVGElement 上使用该属性。</p><br>
+<p></p><br>
+<p>另外，IE8- 的 children 会包含 comment node。</p><br>
+<p></p><br>
+<p>HTML：</p><br>
+<p></p><br>
+<p><div id="foo"><!-- comment --></div></p><br>
+<p></p><br>
+<p>JS：</p><br>
+<p></p><br>
+<p>var foo = document.getElementById('foo');</p><br>
+<p>console.log(foo.children.length);  // 1, supposed to be 0</p><br>
+<p></p><br>
+<p></p><br>
+<p>--原生DOM探究 -- NodeList v.s. HTMLCollection</p><br>
+<p></p><br>
+<p>涉及获取元素的主要API</p><br>
+<p></p><br>
+<p>在获取原生DOM元素的时候，主要涉及这几个DOM API（链接为Living Standard）：</p><br>
+<p></p><br>
+    <p>Node及对应集合NodeList</p><br>
+    <p>Element（继承Node）及对应集合HTMLCollection</p><br>
+    <p>Document(继承Node)</p><br>
+<p></p><br>
+<p>注：计划取代NodeList和HTMLCollection的Elements目前并无广泛实现</p><br>
+<p>基础知识 -- NodeList v.s. HTMLCollection</p><br>
+<p></p><br>
+<p>在不同版本的浏览器中，如果调用获取多元素的DOM方法（getElement...()），有的会得到NodeList（多为旧浏览器），有的会得到HTMLCollection（多为新浏览器）。使用Node Interface的方法，如childNodes，得到的通常是NodeList，而使用其他Interface的方法，又有可能得到HTMLCollection。所以有必要了解一下这两者的区别。</p><br>
+<p></p><br>
+<p>关于这两个类型的差异，在Stackoverflow上有一个不错的问答。</p><br>
+<p></p><br>
+<p>其实，只要先看看Living Standard中这两个类型的IDL，便能猜出大概了。NodeList的IDL如下：</p><br>
+<p></p><br>
+<p>interface NodeList {</p><br>
+  <p>getter Node? item(unsigned long index);</p><br>
+  <p>readonly attribute unsigned long length;</p><br>
+  <p>iterable<Node>;</p><br>
+<p>};</p><br>
+<p></p><br>
+<p>而HTMLCollection的IDL如下：</p><br>
+<p></p><br>
+<p>interface HTMLCollection {</p><br>
+  <p>readonly attribute unsigned long length;</p><br>
+  <p>getter Element? item(unsigned long index);</p><br>
+  <p>getter Element? namedItem(DOMString name);</p><br>
+<p>};</p><br>
+<p></p><br>
+<p>相同点：</p><br>
+<p></p><br>
+    <p>它们都有length属性</p><br>
+    <p>都有元素的getter，叫做item</p><br>
+<p></p><br>
+<p>不同点：</p><br>
+<p></p><br>
+    <p>NodeList的元素是Node,HTMLCollection的元素是Element。</p><br>
+<p></p><br>
+    <p>Element继承自Node，是Node的一种，在HTML中，它一般是HTML元素（比如<p>，<a>之类的标签创建出来的对象）。而Node作为父类，除了Element还有一些其他子类，比如HTML元素内的文本对应的Text，文档对应的Document，注释对应的Comment。</p><br>
+<p></p><br>
+    <p>HTMLCollection里，只有Element，而NodeList里可以有Element、Text、Comment等多种元素。按说如果获取元素返回的列表里只有Element，那这两种类没多大区别，但事实上很多时候浏览器会将解析HTML文本时得到的Text和Comment一并放进列表里放回。比如说下面这一段代码</p><br>
+<p></p><br>
+    <p><div></p><br>
+        <p><!-- Comment --></p><br>
+        <p><p>This is Some Text</p></p><br>
+    <p></div></p><br>
+<p></p><br>
+    <p>若将这个div的子元素放在列表里返回，那么如果是作为NodeList返回，浏览器最多可以给这个列表5个元素（不同浏览器可能不同）</p><br>
+        <p>一个<div>和注释间的断行和空格（或tab）作为text node（没错，标签之间的空白符号也可以被解析为text node）</p><br>
+        <p>注释作为comment node</p><br>
+        <p>注释和<p>之间的断行和空格（或tab）作为text node</p><br>
+        <p>p作为element</p><br>
+        <p></p>和</div>之间的断行和空格（或tab）作为text node</p><br>
+<p></p><br>
+    <p>因此NodeList里可能会有很多一般DOM操作不需要的text node和comment node需要处理。而HTMLCollection则简单多了，只有<p>这一个元素，这也是比较符合大多数人直觉的结果。</p><br>
+<p></p><br>
+    <p>HTMLCollection还有一个namedItem方法，可以快速获取其中元素。假设有这样一段HTML：</p><br>
+<p></p><br>
+    <p><div></p><br>
+        <p><!-- Comment --></p><br>
+        <p><p>This is Some Text</p></p><br>
+        <p><img name="test" src="test.jpg"></p><br>
+    <p></div></p><br>
+<p></p><br>
+    <p>那么假设得到了这个div的子元素构成的HTMLCollection，叫做list，那么使用list.namedItem("test")就可以直接得到里面的img元素。</p><br>
+<p></p><br>
+    <p>查找顺序参考Living Standard，但是在现实中不是所有浏览器都遵循标准。比如标准规定如果有多个拥有相同id或者name的元素，只要返回第一个，但chrome和opera会将它们放在一个HTMLCollection或者NodeList里一并返回，参见MDN。</p><br>
+<p></p><br>
+<p>从IDL看不出来的还有如下几点</p><br>
+<p></p><br>
+    <p>这两个类都是“live”的。对其中元素进行操作，会实时反映到DOM中（也因此如果一次性直接在这类列表上进行多个DOM操作的话，带来的开销会很大）。</p><br>
+    <p>item和namedItem都可以通过[]的缩写进行调用，有的浏览器还支持用()的缩写进行调用（也就是可以list[index]，list[key]或者list(index)，list(key)），以及直接用dot notation调用namedItem（比如list.key）。</p><br>
+    <p>部分浏览器支持对NodeList调用namedItem或间接通过[]、()、dot notation来调用namedItem，但由于各浏览器支持不同，最好不对NodeList做这种操作。</p><br>
+    <p>IE8及以下版本浏览器中，注释属于HTMLCommentElement,算作Element,因此会出现在HTMLCollection里。</p><br>
+<p></p><br>
+<p>--IE8/9的几个前端bug解决方案 </p><br>
+<p></p><br>
+<p>最近做的东西需要兼容IE……啊真是令人忧伤……</p><br>
+<p>解决低版本IE的buggy inline-block</p><br>
+<p></p><br>
+<p>低版本的IE只对本身inline的元素能用inline-block，而本身为block的元素需要设为inline。此外，如果想要让这个buggy的inline-block生效，还需要让元素具备hasLayout，常见的方法是设置zoom。如果想绕过低版本IE又保持对其他浏览器的兼容，可以这样：</p><br>
+<p></p><br>
+<p>.xx {</p><br>
+    <p>display: inline-block;</p><br>
+    <p>*display: inline;  // IE7- only hack</p><br>
+    <p>zoom: 1;</p><br>
+<p>}</p><br>
+<p></p><br>
+<p>参考Inline block doesn't work in internet explorer 7, 6</p><br>
+<p>jQuery UI 1.7 的 Draggable 在 IE9 无法使用</p><br>
+<p></p><br>
+<p>哀伤地要使用jQuery UI 1.7 版本带的Draggable，但是在IE9下无法使用（i.e.完全不能用233 根本拖不了），原因是IE9的鼠标事件更新后旧版本的jQueryUI没有对它开例外，当成了更低版本的IE去处理，解决方法在这里：jQuery UI does not work on IE9</p><br>
+<p></p><br>
+<p>将_mouseMove的</p><br>
+<p></p><br>
+<p>if ($.browser.msie && !e.button)</p><br>
+<p></p><br>
+<p>改成</p><br>
+<p></p><br>
+<p>if ($.browser.msie && document.documentMode < 9 && !e.button)</p><br>
+<p></p><br>
+<p>为IE9及更高的IE添加例外即可</p><br>
+<p>IE9下出现javascript无法正常生效，按F12后恢复正常</p><br>
+<p></p><br>
+<p>这是因为IE8/9默认没有console，所以如果代码里残留了类似console.log的引用就会报错，整个js挂掉，参见这里，解决方法是将带console的语句删掉（反正一般也是调试用的，删了无妨），或者用类似HTML5 Boilerplate里的解决方案</p><br>
+<p></p><br>
+<p>-- JavaScript: The Evil Parts - 1 </p><br>
+<p></p><br>
+<p>最近在看JavaScript框架设计，在讲解类型判定的时候提到了一些“匪夷所思的情况”，不过没有明说都是什么时候会出现这些情况。自己玩儿了一下，写写随笔吧。不过可能除了我找到的，还有会其他时候会出现这些诡异的现象2333</p><br>
+<p></p><br>
+<p> </p><br>
+<p>问题：在JavaScript中，什么时候会出现</p><br>
+<p></p><br>
+    <p>a !== a</p><br>
+    <p>a == b && b != a</p><br>
+    <p>a == !a</p><br>
+    <p>a == b && a == c && b != c</p><br>
+    <p>a != b && a != c && b == c</p><br>
+<p></p><br>
+<p>答案</p><br>
+<p></p><br>
+    <p>参考ECMA-262 Edition 5.1 Section 11.9.6，其实!=也是true（参考11.9.3）</p><br>
+<p></p><br>
+    <p>var a = NaN;</p><br>
+    <p>console.log(a !== a); // true</p><br>
+<p></p><br>
+    <p>只有IE6~8会出现（由于window不属于ECMAScript约束范围）</p><br>
+<p></p><br>
+    <p>var a = window；</p><br>
+    <p>var b = document;</p><br>
+    <p>console.log(a == b && b != a);  // true</p><br>
+<p></p><br>
+    <p>参考ECMA-262 Edition 5.1 Section 11.9.3，这里也有讲解</p><br>
+<p></p><br>
+    <p>var a = [];</p><br>
+    <p>console.log(a == !a);  // true</p><br>
+<p></p><br>
+    <p>来自Douglas Crockford的JavaScript: The Good Parts，同样参考11.9.3，这里也有讲解</p><br>
+<p></p><br>
+    <p>var a = 0;</p><br>
+    <p>var b = '';</p><br>
+    <p>var c = '0';</p><br>
+    <p>console.log(a == b && a == c && b != c);  // true</p><br>
+<p></p><br>
+    <p>来源和第4道一样</p><br>
+<p></p><br>
+    <p>var a = false;</p><br>
+    <p>var b = undefined;</p><br>
+    <p>var c = null;</p><br>
+    <p>console.log(a != b && a != c && b == c);  // true</p><br>
+<p></p><br>
+    <p> </p><br>
+<p></p><br>
+<p>JavaScript里的黑魔法真是太可怕了，啊哈哈哈哈哈……虽然都是略钻牛角尖的东西，不过实际开发中可能真的会被其中的情况坑到。所以说，在绝大多数情况下，还是能用===就用===的好……</p><br>
 </body>
 </html>
