@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="author" content="Jorge Villalobos ">
+    <meta name="description" content="">
+    <title>How to develop a Firefox extension</title>
+    <link rel="stylesheet" href="css/global.css" media="all">
+</head>
+<body>
+<a href="https://blog.mozilla.org/addons/2014/06/05/how-to-develop-firefox-extension/">the link of articles</a><br>
+
+<pre>
+
+
+It’s been a while since we published a guide on extension development in this blog, and we recently discovered that many of you are hitting a very old blog post about it. There’s plenty of documentation out there, but it can be hard to find, so here’s an overview of what you need to know about extension development.
+
+As with everything Mozilla, the first place you should look for developer documentation is the Mozilla Developer Network. There’s an add-ons section there where you will find everything you need to know about how to develop Firefox extensions, as well as other add-on types.
+
+There are a couple different ways to go about creating an extension for Firefox, so I covered each in the sections below.
+Add-ons SDK extensions
+
+The Add-ons SDK is a set of simple APIs you can use to quickly build good Firefox extensions. It’s what we recommend for new developers. It should be easy to work with, especially if you’re familiar with Google Chrome extensions or userscripts. It abstracts away most of the XUL / XPCOM infractrusture in Firefox, giving you a more familiar HTML and JS environment to work with.
+
+The current approach to building an SDK extension is to download and set up the SDK, code locally,  then package your extension (an XPI file) using the cfx tool included with the SDK. The SDK team is working on making this process much easier by integrating it into Firefox developer tools. Soon you’ll be able to build your extensions very quickly, right from Firefox.
+
+You can learn more about the SDK and get help here:
+
+    Documentation on MDN.
+    Articles in this blog.
+    Stack Overflow.
+    Add-ons forum.
+    #jetpack channel on Mozilla IRC.
+
+Bootstrapped extensions
+
+Bootstrapped extensions don’t require a restart to be installed, like SDK extensions, but they don’t have the easy access to SDK APIs or sandboxing. You’re basically doing everything manually, like tracking windows to add or remove your UI. However, there are various great tools available to you via existing JavaScript Modules, like CustomizableUI.jsm for toolbar UI and Services.jsm for frequently used Firefox components.
+
+Compared to the old way of making extensions (see Overlay extensions below), the only notable loss are overlays. Bootstrapped extensions have the bootstrap.js file instead, which is what serves as the starting point for your code. Otherwise, everything should be familiar to you: install.rdf, chrome.manifest and code files, all packed in a ZIP file with a .xpi extension.
+
+Other than Bootstrapped extensions on MDN and the pages they link to, all the available developer resources are the same for overlay extensions (see below).
+Firefox for Android extensions
+
+Extensions in Firefox for Android are slightly different. Since the UI is native instead of XUL, the way extensions can modify it is different and a bit more limited. This also means overlay extensions are not supported, so your options are the SDK and bootstrapped extensions.
+
+Since mobile applications have very limited screen real estate, browsers need to maximize the content area, meaning extensions can’t add buttons or toolbars to the browser. However, the Firefox for Android team recently developed the Firefox Hub API that lets extensions add their content to the home page. This is a smart place to put your extension UI if you need it.
+
+You can learn more about Firefox for Android extensions and get help here:
+
+    Documentation on MDN.
+    Add-ons forum.
+    #extdev and #mobile channels on Mozilla IRC.
+
+Overlay extensions
+
+Overlay extensions are the old way of making add-ons. It might still make sense for you to use this approach if you need to create a very complex overlay or have other specific needs. However, having to restart Firefox to install this kind of extension is annoying because it breaks the user’s workflow, so you should definitely consider using the SDK or bootstrapped extensions first.
+
+You can get help about extension development in general here:
+
+    Documentation on MDN.
+    Articles in this blog.
+    Add-ons forum.
+    #extdev channel on Mozilla IRC.
+
+Tags: add-ons sdk, developers, documentation, mobile, restartless
+
+Categories: developers, documentation, mobile, sdk
+26 responses
+
+    Quicksaver wrote on June 5, 2014 at 10:16 am:
+
+        Hi Jorge,
+
+        I read your post and I thought I would mention an alternative to all the methods you proposed.
+
+        Back when I upgraded my old overlay-based add-ons into a bootstrapped format, it became clear to me that it was nearly impossible to port the exact same functionality without some seriously heavy extra code. Since at the time the SDK was still in its infancy, and didn’t have anything that I would find useful for this task, I went procrastination-level-9000-lazy and created a sort of bootstrapped add-on backbone that I use in all my add-ons.
+
+        It allows me to have my add-ons in a bootstrapped format, while still making use of (fully localizable, if that’s a word…) XUL overlays that can be unloaded when the add-on is disabled without needing a restart. Plus a ton of other very fun things, in particular the moduleAid object which gives me the ability to have easily accessible methods in the window object, scoped to the sandboxed environment of the add-on. And a bunch of other readily accessible and self-initializing objects that allow me to focus on the add-on’s features, rather than on their integration with firefox.
+
+        It may not be for the most novice developer (especially not without a lot of studying up the MDN docs like you recommended as well), but perhaps more seasoned developers might find it useful. Personally, I would have loved to have something like this myself a few years ago, when I decided to port my XUL add-ons to a bootstrapped format; I rely a lot on UI modifications, and this backbone comes in very handy at times for that.
+
+        Anyway, link: https://github.com/Quicksaver/Bootstraped-Addon-Backbone
+
+        All the files are *somewhat* documented, at least with a basic description of what they contain and how to use them. And for any examples you just have to surf a bit through any of my other add-ons in my git page.
+
+        Like I said, I’m mentioning this in case someone might find it useful. And of course, I built them for myself, so they might not be of a “professional level”, as I am not either. But if anyone would like to use them and requires any change or addition to them I would be happy to try to help with that as well. :)
+
+        Happy coding!
+        Luís Miguel
+
+        Jorge Villalobos wrote on June 5, 2014 at 10:25 am:
+
+            That’s great, thanks for sharing!
+
+    Jazzy wrote on June 5, 2014 at 5:32 pm:
+
+        Is there payment arranged when you develop a firefox add-on that mozilla values?
+
+        Jorge Villalobos wrote on June 6, 2014 at 11:23 am:
+
+            Sorry, but I don’t quite understand your question. There’s no payment involved when creating add-ons, or listing them on our website. You can try to monetize them in various ways, but there’s no official way we support.
+
+    wbamberg wrote on June 10, 2014 at 10:00 am:
+
+        Great post Jorge. There’s also a really useful tutorial on migrating from an overlay extension to restartless: https://flagfox.wordpress.com/2014/01/19/writing-restartless-addons/. The author is currently in the process of making a version of it available on MDN: https://developer.mozilla.org/en-US/docs/How_to_convert_an_overlay_extension_to_restartless.
+
+    Peter J. Sloetjes wrote on June 10, 2014 at 10:03 am:
+
+        Is there any intent to make CustomizableUI.jsm available on other platforms (Firefox for Desktop/Mobile/(OS), Thunderbird, …) for the purpose of adding an extension button and a HTML document *somewhere appropriate*? That would help to abstract away most of the random framework stuff for non-SDK add-ons.
+
+        Jorge Villalobos wrote on June 10, 2014 at 1:38 pm:
+
+            CustomizableUI.jsm works in desktop Firefox, and I suppose it will be eventually adopted by SeaMonkey and Thunderbird, when (and if) they move to the new theme. I can’t imagine it would be practical for mobile, and the Firefox Hub API is sort of its replacement.
+
+            I’m not sure what you mean by the HTML document. Maybe you’re referring to the view style of buttons, which are supported by CustomizableUI.jsm and the SDK.
+
+            Peter Sloetjes wrote on June 10, 2014 at 5:09 pm:
+
+                I think Mozilla should battle platform fragmentation by adding abstract interfaces for platform-dependent implementations to the Gecko core WHEREVER POSSIBLE. An interface for minimal add-on functionality (iconic button, options panel, local storage, application access) which calls into pre-existing API’s would probably take some 600 lines. An experienced Mozillian could probably write and test it in 80 hours and it would enable add-on developers to quickly target some 1 billion mobile and desktop users at the same time while saving tens of thousands of developer hours. Creating only platform-specific API’s with limited purposes and new and unique terminology is just maximizing entropy.
+
+    nonlinearly wrote on June 14, 2014 at 11:44 pm:
+
+        Hello, in witch depth an addon/extension can interact with firefox as a windows application… for example is it feasible to make an extension that can be used from a page/web application to alert/notify the user flashing the taskbar and/or the corresponding tab?
+        I ask because I do not want to start a difficult learning circle and at the end to discover that I can’t…
+        Thanks
+
+        Jorge Villalobos wrote on June 17, 2014 at 12:29 pm:
+
+            It’s possible to do the things you want to do, but some are more difficult than others. Flashing a tab is on the easy side, while interacting with the taskbar and other external elements can be trickier.
+
+    Fathiah Utari wrote on June 15, 2014 at 5:20 pm:
+
+        I was firefox for android users but as we all know firefox for android is very limited, is it possible in the future firefox for android to be the same as deskstop?
+
+        Jorge Villalobos wrote on June 25, 2014 at 11:57 am:
+
+            Same in what way? The screen size is a major limiting factor in what Firefox for Android can do.
+
+    DaleBoze wrote on June 23, 2014 at 5:00 pm:
+
+        Very useful post, thanks. I’d like to create an add-on for internal use at a company, not shared with the rest of the world. What options would I have for that? Does an add-on have to be submitted to and published by Mozilla?
+
+        Jorge Villalobos wrote on June 25, 2014 at 11:59 am:
+
+            There’s no limitation at the moment, though in the future we might require you to sign your add-on using a key we provide. However, there’s no need to host the add-on with us. There’s information about providing your own updates here.
+
+    Rohit Jalmi wrote on June 24, 2014 at 10:52 pm:
+
+        i can get video tutorial to develop Firefox extension ?
+
+        Jorge Villalobos wrote on June 25, 2014 at 2:39 pm:
+
+            I don’t know of any, sorry, but that’s a really good idea.
+
+    erosman wrote on June 25, 2014 at 4:25 am:
+
+        I understand the convenience of installing bootstrapped extensions but there is a question that has been bugging me for a long while.
+
+        Has there ever been a performance & resource/memory usage comparison between overlay & bootstrapped extensions?
+
+        In overlay extensions, a lot of the work, ie XUL overlays etc are handled NATIVELY by the application (ie Firefox).
+        In a bootstrapped extension, all above work is left to the extension developer which often involves manually adding many event-listeners and observers to achieve the same (which could be not as native as the applications core).
+
+        I have noticed startless addons that fail to initiate on occasions on some windows. I have also noticed startless addons that on occasions, the insertion itself was noticeable (ie the functionality, image, icon comes slightly after the window is loaded). Furthermore, the type of the even-listener used is not uniform and varies greatly.
+
+        I have a nagging feeling that manually (and not natively) adding menus, context menus, functions, string-bundles, preferences, localization etc and Enumerating windows would use more resources (besides the fact that its efficiency would be greatly dependent on developer’s skills).
+
+        I look forward to your comments
+        :)
+
+        Jorge Villalobos wrote on June 25, 2014 at 2:46 pm:
+
+            There are certain classes of add-ons that definitely will be more difficult to implement as restartless than overlay extensions. However, I think those are the minority. Most add-ons have fairly minimalistic UIs, and that’s what tends to be favored by end users anyway.
+
+            As for the performance benefits or drawbacks in these cases, that’s difficult to measure or predict since add-ons are so different from each other. Having to generate a complex UI on every window load is probably slower than having it in an overlay, but I couldn’t say how much. The majority of users only open one window, so it’s largely an edge case.
+
+            I think it should have been possible to implement restartless add-ons without having to lose overlays, but unfortunately that was not the case. Maybe in the future we can find a good compromise between the two approaches so certain add-ons don’t require so much effort to port.
+
+    Shikhar wrote on June 27, 2014 at 5:11 am:
+
+        I want to know if there is a book on Mozilla firefox addon development?
+
+        Jorge Villalobos wrote on June 27, 2014 at 11:00 am:
+
+            None that I know about. All the useful documentation is online, most of it on MDN.
+
+    Rovert wrote on July 15, 2014 at 1:09 am:
+
+        I have been searching for a Firefox Plugin that can take Fixed/Sticky Nav Bars, Menus, and Headers from websites and force them to remain attached to the page. I’m sick and tired of this website trend as it reduces visibility on smaller screens such as tablets. On one particular site it was so bad that 1/3 of my screen was covered with the website’s logo and other elements. Could you help me out?
+
+        Jorge Villalobos wrote on July 15, 2014 at 12:00 pm:
+
+            It should be possible (maybe not easy) to create add-ons that do that. I don’t know of any, however. The closest I can think of is Stylish, but that requires you to write the style overrides for every site.
+
+    Aamir khan wrote on July 24, 2014 at 12:34 pm:
+
+        Can i get Some Video stuff for making Add-ons for mozila
+
+        Jorge Villalobos wrote on July 30, 2014 at 11:15 am:
+
+            We don’t have any video tutorials, unfortunately.
+
+    Max Meis wrote on July 27, 2014 at 12:18 pm:
+
+        Hi Jorge,
+        Do you know any video tutorial to develop an extension ‘step by step’?
+        Thanks for the post.
+
+        Jorge Villalobos wrote on July 30, 2014 at 11:14 am:
+
+            I don’t know of any good video tutorials, unfortunately. It’s also a difficult thing to do, given how different add-ons can be from each other.
+
+</pre>
+</body>
+</html>
