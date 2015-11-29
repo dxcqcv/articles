@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="author" content="Håkon Wium Lie">
+    <meta name="description" content="">
+    <title>CSS Regions Considered Harmful</title>
+    <link rel="stylesheet" href="css/global.css" media="all">
+</head>
+<body>
+<a href="http://alistapart.com/blog/post/css-regions-considered-harmful">the link of articles</a><br>
+
+<pre>
+Håkon Wium Lie is the father of CSS, the CTO of Opera, and a pioneer advocate for web standards. His last article in this magazine led directly to real fonts on the web. When Håkon speaks, whether we always agree or not, we listen. In today’s post, Håkon shares his opinion on CSS Regions.
+
+Way back, when designers first started emigrating from their islands of desktop publishing onto the web, they asked a seemingly simple question: how could they take with them their favorite colors, fonts and layouts? At first, we had no good answer. HTML offered semantic tags to describe the structure of documents, not their presentation. Browsers couldn’t be told what fonts to use, or where to fetch them. Authors, however, soon found a sneaky shortcut: the img element. By making images of their text, authors could achieve their colorful helveticized designs. In the process, all semantics (that is, information about the meaning of elements, as opposed to the presentation) was removed and even the searchable text was gone. CSS was proposed in 1994 to stop this practice; saving semantic HTML was just as important as achieving desirable layouts.
+
+A few years later, at the height of the XML fever, presentational elements made a comeback. XSL defined an XML vocabulary for Formatting Objects; XSL-FO tags that said nothing about being headlines or list items, but all about their presentation. Computer scientists have a peculiar way of expressing fear and doubt. They publish essays with “considered harmful” in the title. This particular design pattern was started by Edsger Dijkstra when he published “Go To Statements Considered Harmful” in 1968. The development of formatting objects led me to use the same device; “Formatting Objects Considered Harmful” argued that formatting objects were font tags in disguise and that their use on the web must be avoided to preserve web semantics.
+
+It seems that proposals for presentational elements return every so often. The most recent incarnation is CSS Regions. One should not write “considered harmful” articles lightly, but presentational elements is not the only problem with CSS Regions. For those who believe in meaningful HTML tags, responsive web design, and compact CSS code, the introduction of CSS Regions is not good news.
+
+Problem #1: regions use dummy divs
+Some articles on CSS Regions have already looked at the source code. An article published by WebPlatform.org describes how to achieve a commonly used two-column design:
+<img src="img/cssRegions/cr01.png" alt="" />
+
+a sample document with columns of text and a view of the CSS region layout
+The formatted document is on the left, and the corresponding regions are shown on the right. The HTML code that generates this layout must be studied in order to understand CSS Regions. Here’s a snippet:
+
+<section class="page">
+ 	<div id="title">	<h1>Region #1</h1>			</div>
+ 	<div id="intro">	<h1>Region #2</h1>			</div>
+ 	<div id="col1">	<h1>Region #3</h1>			</div>
+ 	<div id="col2a">	<h1>Region #4</h1>			</div>
+ 	<div id="pull">	<h1>(Separate Region)</h1>	</div>
+	<div id="col2b">	<h1>Region #5</h1>			</div>
+</section>
+The elements above represent regions, which are containers where text can flow from one to the other. Here is some of the corresponding CSS declarations for the #intro element:
+
+#intro {
+	width: 45%;
+	position: absolute;
+	top: 5em;
+	height: 3em;
+	-webkit-flow-from: main;
+	-ms-flow-from: main;
+	flow-from: main;
+}
+The CSS code above says, roughly: turn the #intro element into an absolutely positioned element with a given size and position, then discard the content of the element and replace it with content from the flow called “main”. Thus, the h1 element inside #intro isn’t a headline at all—the div element is a presentational container and the h1 element is discarded.
+
+The proponents of CSS Regions might argue that, “Yes, the divs are there for presentational purposes, but only elements can be scripted on the web and we must therefore use elements.” This underlines an important point: it’s not regions per se that that are harmful to web semantics, it’s the fact that they are encoded as presentational HTML elements. If we want regions on the web, we should find a way to write them in CSS and not in HTML. If CSS Regions are accepted in 2014, we will be stuck with absolutely positioned dummy divs for the foreseeable future.
+
+Not all web designers are concerned about semantics. If regions can provide the design tools they crave, a few dummy divs are worth the cost to some. Therefore, let’s analyze CSS Regions from a web design perspective. Do CSS Regions make good websites?
+
+Problem #2: regions are not responsive
+Responsive design is a hallmark of good web design. We want our sites to be scalable across a wide range of devices; from small mobile phones, to smarter phones, to big screens. Columns are a neat way of using the full width while keeping line lengths down. The example from the WebPlatform article flows its content into two columns. The width of the columns are set in percentages (45 percent, as can be seen in the example above). That provides for scaling as the two columns will grow with the width of the screen. But, there will always be two columns. Even on a very narrow screen, the example will not change to a one-column layout.
+
+Ideally, you want the number of columns to be dynamic so that a narrow screen has one column, a medium screen has two columns, and an ultra-wide screen has three, or maybe four columns. CSS Regions will not give you this. Another CSS specification, however, describes how to achieve pages with scalable number of pages:
+
+<img src="img/cssRegions/cr02.png" alt="" />
+four views of a web page demonstrating different numbers of columns for different window sizes
+The samples above are produced with CSS Multi-column Layout, a specification for which I am the editor. And here is the code:
+
+article {
+	columns: 20em
+}
+The snippet above tells the formatter that the optimal line length is 20em, and that the number of columns should be computed accordingly. Thus, on a small screen you will have one column, on a wider screen two columns, etc. In effect, multi-column layout automatically creates the optimal number of connected regions needed to display the content. No presentational elements are needed to represent these regions—they are automatically created.
+
+Can this kind of automatic layout of regions can also be a limitation though? Authors should be allowed to place regions far apart, shouldn’t they? This question brings us to the next section.
+
+Problem #3: confusing text flow
+Specifications often start out with a motivational example to show how powerful the proposed functionality is and how easy it can be achieved. The first example of the CSS Regions specification is shown below:
+
+<img src="img/cssRegions/cr03.png" alt="" />
+diagram of a page with a confusing visual text flow
+The text flow moves from region 1, to 2, 3, and 4, following the arrows. Notice how the eyes of the reader will have to traverse sideways, in the opposite of the reading direction, from 3 to 4. These kinds of traversals are not common in newspaper design, and I will argue that they are confusing to readers and should be avoided. CSS Multi-column Layout cannot make text flow this way, and I consider that to be a feature.
+
+In my (arguably quite memory-constrained) mind, it would be far better to put the figure (A) at the bottom of the page and stack the columns in the reading direction left to right. Like this:
+<img src="img/cssRegions/cr04.png" alt="" />
+
+diagram of page with an improved visual text flow
+In this design, the maximum length that the eye would have to traverse backwards is the length of the line. This design can easily be achieved in CSS Multi-column Layout. Thus, in my experience, CSS multi-column layouts can do most of the things that designers plan to use regions for. If you cannot achieve your preferred columns using CSS Multi-column Layout, you should probably reconsider it.
+
+Amongst the problems discussed in this article, this is probably the one I’m least worried about; if enough users are confused, the design will change. But it seems wasteful to invest years of efforts to implement CSS Regions if most of the compelling use cases can be achieved through an existing mechanism.
+
+Problem #4: verbosity
+The motivational example from the Regions draft also has some sample CSS code attached. The CSS code is shown in an appendix, probably because it’s too long to display at the beginning of the document. The CSS code uses 26 lines (after removing comments and blank lines). In addition, there are seven lines of HTML code for the dummy elements, bringing the total to 33 lines.
+
+How many lines would it take to encode the more intuitive design (shown in the figure above) using CSS Multi-column Layout? Three, it turns out:
+
+article { columns: 20em }
+h1 { column-span: 2 }
+img { column-span: 2; float: bottom }
+For this example, using CSS Regions is a magnitude more complex than using CSS Multi-column Layout. If one were to support one layout on small screens, and more columns on wider screens, the code size for using CSS Regions would grow quickly.
+
+(I must add that my favored code examples in this piece use features not just from CSS Multi-column Layout, but also from CSS Figures, which add integer values to the column-span property, and top and bottom to the float property.)
+
+Problem #5: code reuse
+Returning to the article on CSS Regions, consider the top part of the formatted article. The #intro element discussed above is a region set to contain the introduction, shown in white on a dark background. Notice how the text flows from the dark box to the next region under it.
+<img src="img/cssRegions/cr05.png" alt="" />
+
+top of the CSS Region sample document
+Do your eyes follow? Do you know where the introduction ends? Admittedly, the first sentence of Finnegan’s Wake isn’t a traditional introduction, but consider how this will be used for more traditional articles. Personally, I feel cheated when big-font introductions turn into small-font body text in the same sentence. As a reader, I’d like to know where the introduction starts and where it ends and believe it should end in a complete sentence. Most publications use my favored style, while some style a box of a certain size like in the above example. These publications will be tempted to try CSS Regions.
+
+However, I don’t think they will be happy with using CSS Regions this way. It’s problematic to assign style to a box because authors do not know how many lines of text will fit into the box. A common problem with absolutely positioned elements is that the text doesn’t always fill the box as the author intends. Often there will be unused white space at the bottom of the element. The same will happen when authors start using CSS Regions to style the first (say) five lines of text; perhaps only four lines will fit and there will be a visual jump to the rest of the text.
+
+A similar problem appears in the pullquote that appears in the right column:
+<img src="img/cssRegions/cr06.png" alt="" />
+
+portion of CSS Region sample document with pullquote
+The pullquote starts with “The oaks…” in the image above. The region it lives in has a size just big enough to hold the text. An authoring tool may compute the size of the box and create a custom-made stylesheet. However, in order for the document to be presented “correctly,” the text must remain unchanged (no translations, please!), the same fonts must be available (please do not turn off downloadable fonts!), and the user must not increase the minimum font size (please bring your magnifier!).
+
+Stylesheets written this way will not be reusable, each new document will have its own.
+
+Harmful?
+CSS Regions were proposed by Adobe in 2011 and the company is still its main proponent. It’s laudable that Adobe takes the web seriously and that it brings proposals to W3C—certainly much better than pushing a proprietary technology like Flash. Its motivation is to sell authoring tools that generate CSS code. That’s good, too—the web needs good authoring tools and Adobe can make them. But CSS Regions, as currently proposed, will not improve the web. Rather, it brings presentational tags, verbose code, and per-document stylesheets.
+
+Recently by Håkon Wium Lie
+Ten CSS One-Liners to Replace Native Apps
+Håkon Wium Lie is the father of CSS, the CTO of Opera, and a pioneer advocate for web standards. Earlier this year, we published...
+
+Our upcoming December 2nd event
+Ask Dr. Web—Live
+Design your career like you’d design a website. Join our fearless leader Jeffrey Zeldman and his co-host Sarah Parmenter for a live Q&A—and learn how to build your career and get the projects and positions you want.
+
+About the Author
+
+
+Håkon Wium Lie
+Håkon Wium Lie proposed CSS in 1994 and is still hard at work on CSS specifications. He is the CTO of Opera Software and a champion for CSS compliance in all browsers. Lie is also a director of YesLogic, the company behind the CSS-based Prince formatter, which was used to produce a book he co-authored: Cascading Style Sheets: Designing for the Web. He has a Masters degree from the MIT Media Lab and a PhD from the University of Oslo. He is an advocate of Acid2, the video element, web fonts, and growing apples. Real apples.
+MORE FROM THIS AUTHOR
+Ten CSS One-Liners to Replace Native AppsCSS @ Ten: The Next Big ThingPrinting a Book with CSS: Boom!
+Get our latest articles in your inbox. Sign up for email alerts.
+51 Reader Comments
+
+ 
+Alan Stearns 1 12:34 pm on January 22, 2014
+I’m planning on a longer response a bit later, but I want to start with this question: do you consider Web Components harmful? It seems to me that many of your arguments against Regions also apply to Web Components.
+
+EMBED
+
+François REMY 2:15 pm on January 22, 2014
+Most of your arguments look to be just about samples that do not make correct use of the css-regions properties. Those are not real websites or real layouts, it’s just some engineer showing a property works. We all agree most engineers suck at UI, right?
+
+For example, when you say the regions-sizes-and-divisions cannot be made dependent on the actual content, it’s false; you can decide to have auto-sized regions and prevent from breaking somewhere using the “break-inside: avoid”, as well as forcing a break anywhere using “break-after: /*to next*/ region” and “break-before: /*to next*/ region”.
+
+You can also make the number of regions and their layout vary with media queries, it’s inaccurate to say anything else. When the number of regions isn’t known in advance it -means- that you can generate the region anchors using “overflow: fragments” already.
+
+That being said, I’ve to agree people at Adobe tend to overuse CSS Regions in places where CSS Regions do not belong, and where multicolumns and exclusion would do a better job. This is a fact, but this is normal, everyone will consider its “specification babies” before considering alternatives.
+
+Yet there are a very broad range of valid use cases that no other combination of CSS Specifications and Proposals can solve without a named flow concept, even your very own proposals.
+
+EMBED
+
+Spencer Norman 2:22 pm on January 22, 2014
+I agree with the major points of your article. From this perspective, it makes CSS regions feel like they are a big step backwards in the battle to separate presentation and content and some of it seems eerily similar to the pre-div era.
+
+I’m curious though, what are the major advantages to CSS regions? This article seems to focus on one specific area where it seems obvious that another tool such as multi-column could do a better job. I appreciate that this article is able to layout some big concerns but I don’t know many designers or developers who are using well-written, concern-separated, code who would jump on the region bandwagon if it really does add so many lines of code to our stylesheets and break responsive layouts.
+
+I feel that there is some story not being told here about the CSS regions - perhaps there is a more proper way to use them?
+
+I love the Multi-Column Layout proposal as well, seems simple, clean, and keeps my styles and content out of each other’s way.
+
+EMBED
+
+ Håkon Wium Lie (article author)	3:55 pm on January 22, 2014
+Hello François,
+
+Thanks for your comments. Indeed, media queries can be used with CSS Regions—I refer to this when saying: “If one were to support one layout on small screens, and more columns on wider screens, the code size for using CSS Regions would grow quickly.”
+
+It’s also true that regions breaks can be set. Do you think this solves the problems? I challenge you to write a compelling CSS Regions example that addresses the problems that I pointed out!
+
+EMBED
+
+Alan Stearns 1 4:06 pm on January 22, 2014
+So I have to respond to the title with “Considered Harmful” Essays Considered Harmful
+
+I think your article is a fine summary of the arguments you’ve made on the www-style list about CSS Regions over the past few years. It may surprise you that we have been listening and have made changes to CSS Regions based on your feedback (though I have mentioned this before). Some of your points above aren’t quite current, as the proposal has evolved along the way. I think the main point is #1 - all the rest are either inaccurate or the problem really points back to #1.
+
+On Problem #2, you seem unaware that we’ve been talking about responsive layout with CSS Regions ever since Chris Coyier found a neat way of combining quite different desktop and mobile layouts in the same markup. Razvan Caliman has shown quite a few examples of responsive UI using Regions as well. Regions can be used extremely well in responsive layouts. I agree that a standard multicolumn layout is still best done with multicolumn, though.
+
+On Problem #3, you made that point quite a while back, and I made changes to the example to address your concern about ten months ago. Region 3 is tall enough so that you never see Regions 2 and 4 on the same screen (the layout adapts to screen size). But as François notes, this is an engineer’s example. I’m no designer :)
+
+On Problem #4, we’ve gone back and forth over code examples quite a lot. There are some who find float layout intuitive and simple (including the extensions to floats that you’re proposing) and others who have moved on from float layout to Flexbox and who are hotly anticipating Grid Layout. CSS Regions is built to take advantage of any layout system we devise for CSS. There are really just two properties to keep in mind, expressing *what* (flow-into) goes *where* (flow-from).
+
+EMBED
+
+Alan Stearns 1 4:08 pm on January 22, 2014
+(I’m getting too long-winded for the comment box)
+
+
+On Problem #5, you’re critiquing a tutorial layout meant to introduce the concepts of named flows. I think Mike is a great technical writer, but he may be even less of a designer than I am. I’d much rather see your critique of CSS Regions designs from actual designers. You seem to be unaware that regions can automatically size to fit the named flow content, and that region breaks (or even a separate named flow declaration) can control what goes into a pullquote. All of the examples I linked to above have stylesheets that are completely reusable.
+
+EMBED
+
+Gerrie Diaz 4:20 pm on January 22, 2014
+Is there a solution to the issues you expose? I didn’t read all the comments. A section labeled “Proposal” or “Solution Suggested” would cap off this write-up.
+
+EMBED
+
+Max Vujovic 4:54 pm on January 22, 2014
+A few reactions…
+
+“Problem #2: regions are not responsive” -
+Regions are responsive! Designers can use percentage sized regions and define different layouts for their content using media queries, among other techniques. Regions are all about designer control. Naturally, you get responsiveness for free using CSS Multicol because it makes most of the decisions for you. These two features are not at odds. They complement each other nicely. Regions is for complete design control. Multi-column is for quick, simple use cases.
+
+I found the video Alan that pointed out pretty compelling. CSS Regions definitely enables beautiful responsive layouts:
+http://www.youtube.com/watch?v=SEDphxe1uXw
+
+“Problem #3: confusing text flow” -
+With great power comes great responsibility. Of course it’s possible to misuse any powerful feature. That doesn’t mean we should keep great power out of the hands of talented designers. Imagine if you told print designers they could only make evenly sized, adjacent columns. Boring!
+
+“Problem #4: verbosity” -
+Naturally, CSS Regions are more verbose than CSS Multicol because they are much more expressive, generic, and powerful. CSS Multicol makes most of the decisions for designers, so obviously there isn’t much left for the designer to specify. These features target different audiences. If you need simple columns, definitely use CSS Multicol. If you need a rich, magazine-like design, use CSS Regions.
+
+Let’s look at real-world magazine design. With a quick Google Image Search for “magazine design”, it’s obvious that CSS Multicol is insufficient for almost every layout:
+https://www.google.com/search?q=magazine+design&tbm=isch
+
+I’d say CSS Regions covers the 80% of use cases. CSS Multicol covers the 20% of simpler use cases.
+
+Personally, I’m really excited to see real magazine layout coming to the web with CSS Regions. It’s about time!
+
+EMBED
+
+ Håkon Wium Lie (article author)	5:12 pm on January 22, 2014
+Hello Alan,
+
+On #2, indeed, one can provide two different presentations and swap one for another using media queries. That’s a very powerful mechanism. But it leads to verbose code, and I’d argue that it’s better when the mechanism itself scales. Lots of people will use Regions to create multicol layouts, just like the good people at WebPlatform did. I’m happy you see there is a better alternative. What kind of code will Adobe’s tools generate?
+
+On #3, you set the height of the grid to “110vh;”. This makes the grid taller than the screen, which solves some problems, but create others. For example, if you try to reuse that style sheet for a short article, you would end up with white space, no? Is there an implementation that renders your first example as you would like to see it?
+
+On #4, verbosity, you seem to be saying that using Grid or Flexbox will create more compact code? Could you encode the example at hand using your favored technique? I challenge you to write it in three lines :-)
+
+On #5, I don’t think the problem is (nor have I criticized) the design used in WebPlatform’s article. I fear that the problems are much deeper than something that can be fixed by a designer. For example, how would you encode the pullquote example in a way that does not lead to overlapping text or blank areas when the text changes?
+
+EMBED
+
+ Håkon Wium Lie (article author)	5:23 pm on January 22, 2014
+Hello Max,
+
+It’s fun to code up use cases, including magazine layouts. Could you point me to, say 5, of the images that come up in your search that cannot be encoded in multicol?
+
+As for media queries: yes they can be used to switch between different designs. But many designers will forget that not all have as big screen as they do. And, will the customer pay for web designers to do double work? I fear that many devices will be left in the dark unless we find mechanisms that automatically scale. CSS Multicol layout does this beautifully, CSS Regions do not.
+
+EMBED
+
+ Håkon Wium Lie (article author)	5:26 pm on January 22, 2014
+Hello Gerrie, I point to the CSS Muliticol Layout and CSS Figures specifications as possible solutions for many of the things people are trying to solve with CSS Regions. Here are the specifications:
+
+http://www.w3.org/TR/css3-multicol/
+http://figures.spec.whatwg.org/
+
+EMBED
+
+Alan Stearns 1 5:32 pm on January 22, 2014
+Håkon, on #2, take a look at the examples I linked to. In Razvan’s examples you get very responsive UI capabilities using one CSS Region. This one region is defined by an element, so the solution runs up against your problem #1. I think for these cases the tradeoff between functionality and separation of concerns is worth it.
+
+This is why my initial response was to ask about Web Components. In an HTML Template you can define presentational boxes in markup. This also violates SoC, but again I think the tradeoff is worth the compromise.
+
+EMBED
+
+Tweety Wheaty 6:11 pm on January 22, 2014
+I think this post will go down in history as the one that introduced the concepts of Figures to the general dev public. Amazing stuff, I’d never even heard of it. I only wish you had highlighted Figures more in the article, because it addresses many of Regions’ use cases in (what is to my eye) a more elegant, reusable form. I can’t wait for:
+
+http://caniuse.com/css-figures
+
+:)
+
+In practice, I must say I’ve found multicol to be incredibly fiddly and error prone. I love the idea in principle, but there are currently so many glitches, gotchas, and rounding errors that I will continue to avoid it for the foreseeable future for production code. I agree with the basic premise that making multicol better should be as high a priority as regions. It seems to have drifted slightly off the development map, with longstanding bugs stagnating.
+
+EMBED
+
+Sunny Kalsi 2:36 am on January 23, 2014
+From this article, I really like multicol. It seems to be a far more scalable and elegant solution. I only really have one problem with it, and I suspect that it is the one the regions are trying to solve.
+
+Let’s say you have semantic text, a long article or something, but you want to “break up” the monotony of the text with something else. Sometimes that’s necessary (like an aside, or some “useful factoids”), and other times it’s forced (like an ad). Either way, you’re trying to really pull two things apart that are semantically the same and shove in something unrelated precisely because it’s unrelated. On different devices, this unrelated thing may or may not be a good thing to display at a particular place, or at all. This has been a weakness in CSS from the start, and I believe that until that’s addressed, things that hurt the semantic nature of HTML will keep appearing.
+
+EMBED
+
+nobel 5:51 am on January 23, 2014
+It seems that Adobe is pushing features that are (a) so complex you will need an authoring tool to use these features and (b) so unfriendly to style sheet reuse so that you need an authoring tool each time you make a change. It makes sense. For them, not for the rest of us.
+
+EMBED
+
+Cary Hartline 1:40 pm on January 23, 2014
+There is an overall sentiment here that, whether or not it is justified, using the examples in the CSS Regions proposal is not a good idea.  The problem being that it leaves open the question “could someone else write better code using the same CSS specification?”  It would’ve been better to write all of your own examples so that it is understood that you are only critiquing the CSS specification instead of critiquing someone’s coding skills.
+
+This article flipped my idea of CSS Regions.  I first got into them when I watched a Safari demo at WWDC, but now I’ve lost all of my enthusiasm for that specification.
+
+EMBED
+
+ Håkon Wium Lie (article author)	4:08 pm on January 23, 2014
+Hello Sunny, I agree that being able to mix in some semi-related, or unrelated content is useful. The <aside> element in HTML5 can be used for this, and the content of the <aside> element can be moved to other columns and pages using functionality described in CSS Figures. For example, you can say:
+
+aside { float: top: column-span: 2; float-defer-page: 1 }
+
+This will display the <aside> element at the top of the first two columns, one page forward. The specification is still in development, but initial implementations are promising and I hope this will become part of the web. It addresses many of the use cases people try to use CSS Regions for.
+
+EMBED
+
+ Håkon Wium Lie (article author)	5:37 am on January 24, 2014
+Hello Cary, Perhaps it is possible to write better examples for CSS Regions. I wouldn’t know how to do it, but I have challenged those who promote the CSS regions specification to publish better examples that do not exhibit the problems discussed in the article—see my comment to Alan above.
+
+EMBED
+
+cataling 10:08 am on January 24, 2014
+At problem #5, the first thing that the author of the quoted article says right after the image you copied here is “In this case, the region’s height is specified as auto, which makes it expand vertically to accommodate the content that flows into it. This can be useful when designing ‘flexbox’-based layouts in which a more flexible column shrinks to accommodate neighboring content such as the pull-quote.”
+
+Given this, I don’t quite follow the argument about translation, downloadable fonts and magnifiers.
+
+EMBED
+
+ Håkon Wium Lie (article author)	6:00 pm on January 24, 2014
+Hello Cataling, it’s true that the size of the region will change to accomodate a longer or shorter pullquote. However, the surrounding regions will not respond to these changes. So, if you put in a longer text, the pullquote will grow and overlap the text that follows. And if you shorten the pullquote, you will have too much white space between the pull quote and the text that follows. So, the style sheet only looks right when you have a pullquote that is exactly three lines long. This makes style sheet reuse impractical.
+
+EMBED
+
+Alan Stearns 1 6:04 pm on January 24, 2014
+Håkon, you’re saying that if you use absolute positioning, bad things can happen. That has nothing to do with regions. Regions can be positioned with whatever layout mechanism you want. So to fix the problem you’re perceiving just position the regions using grid, flex, table, float or even static layout.
+
+EMBED
+
+Sara Soueidan 4:01 am on January 25, 2014
+Mr. Hakon,
+
+You said:
+“So, if you put in a longer text, the pullquote will grow and overlap the text that follows. And if you shorten the pullquote, you will have too much white space between the pull quote and the text that follows. So, the style sheet only looks right when you have a pullquote that is exactly three lines long. This makes style sheet reuse impractical.”
+
+I’m sorry but didn’t Alan mention the property that prevents that? Here’s a link to an example: http://adobe.github.com/web-platform/samples/css-regions/basic/region-autosize.html
+The pull-quote will always stay inside its region.
+
+Also, why would u want to position the layout absolutely?? You can position the regions any way you want, and as one of them re-sizes the others will “move” to fit into the space all the time.
+
+As for the user wanting to scale/zoom the page in without the content of a region overflowing it, that is basic CSS 101: just use relative units to size the regions, instead of pixels, use `em`s, and the regions will scale up as the text does.
+
+EMBED
+
+Johan Ronsse 8:22 am on January 25, 2014
+Håkon, interesting read. Thank you. I agree with the proposition that regions are not very webby and there are better ways to build layouts. I say this in the context of building a traditional website.
+
+However, I don’t think you are considering every use case.
+
+Regions are very relevant when using CSS to mark up media that needs to be a bit more “strict” in how it should render.
+
+Think about rendering invoices to PDF.
+
+Let’s say you want to render a physical documents by first marking up the content in HTML, styling it with CSS, and then printing that output to PDF.
+
+You need a way to mark the boundaries of each page, where content should end (avoid page breaks, section breaks etc.). You also need a way to let one text flow from one page to another, and maybe a next one. With regions you can be very precise.
+
+Browser technology is used in many other contexts than just websites. Interactive installations in museums, your GPS and the Playstation 4 all use underlying engines like Webkit for their rendering.
+
+Think about an interactive installation in a national history museum. The makers will know that the TV it’s going to be on is 1920x1080. They can be very precise with regions to define how text should flow from one screen to another.
+
+The use cases I describe are different than traditional web use but for me they are a case for CSS regions to exist. Maybe we need a better form to do it (i.e. use CSS3 grid layout do define flow of regions instead of relying on empty HTML divs) but I wouldn’t be so quick to dismiss regions altogether.
+
+EMBED
+
+ Håkon Wium Lie (article author)	5:59 pm on January 25, 2014
+Hello Alan,
+
+<figure class=“embedded-quote” id=“ala-embedded-comment-336217”>
+
+Håkon, you’re saying that if you use absolute positioning, bad things can happen. That has nothing to do with regions. Regions can be positioned with whatever layout mechanism you want. So to fix the problem you’re perceiving just position the regions using grid, flex, table, float or even static layout.
+<figcaption>— Alan Stearns 1 on CSS Regions Considered Harmful</figcaption></figure>     
+
+When promoting regions, you say: use it with anything you like! And when people do, like the WebPlatform article, you say: this has nothing to do with Regions! Rather than enabling pain and suffering, and then try to distance yourself from it, I’d not enable it in the first place.
+
+You are also saying that just using grids or something will fix all the problems I have described. But in my article, I point out problems with your first example in the specifiation—an example that doesn’t use abspos at all. After having studied the code a bit more, I also realize that the style sheet will leave much white space when applied to short articles. So, even the first example in the specification exposes several of the problems I’m pointing out. With no abspos to blame.
+
+EMBED
+
+Alan Stearns 1 9:07 pm on January 25, 2014
+Håkon,
+
+We disagree on the best way to author examples for specifications. The example in the regions spec can be fixed to eliminate the problem you note. But then the example becomes more about creating an adaptive grid layout than the named flow concepts it’s meant to convey. To my mind, there’s already too much grid in the example as it is :)
+
+EMBED
+
+ Håkon Wium Lie (article author)	10:46 am on January 26, 2014
+Hello Alan, if you think the problems reported for the first example in the specification can be fixed, I think you should published a revised version. Not in the spec necessarily—a URL in this forum will also be welcome.
+
+EMBED
+
+ Håkon Wium Lie (article author)	11:18 am on January 26, 2014
+Hello Sara,
+
+Thank you for publishing a test document—I like seeing code. In the example, your green region on the left behave just like normal elements: they appear in the source order and expand by pushing subsequent elements downwards. That’s good, but you don’t need to use regions to achieve this—normal HTML will do just fine.
+
+What I had hoped to see in your example was a way to do pull-quotes as you think they should be done (as opposed to how the WebPlatform does it). The pull-quote must appear at a certain place in the text (for example, 5em from the top of the column). And when the pull-quote expands, the pull-quote should push other content aside. I know how I would achieve this in multi-column layout:
+
+  http://figures.spec.whatwg.org/#the-float-offset-property
+
+And I’m interested in seeing how you would do it using regions.
+
+EMBED
+
+ Håkon Wium Lie (article author)	12:14 pm on January 26, 2014
+Hello Johan,
+
+I agree that we need to think of how we can use web formats outside of browsers. Creating PDF invoices from HTML documents is a good example and one I am familiar with. At YesLogic, we send all our invoices as PDF documents generated from HTML and CSS, using Prince. When doing so, we write CSS code like this:
+
+@page { size: a4 portrait; margins: 20mm }
+table { page-break-inside: avoid }
+
+Here’s are links to the HTML and PDF versions of a sample invoice.
+
+  http://www.princexml.com/howcome/2014/invoice
+  http://www.princexml.com/howcome/2014/invoice.pdf
+
+I don’t think this is just a temporary solution while something better is developed, I think this is a great solution that works here and now. And I don’t see how the markup or resulting code would be improved by CSS Regions.
+
+I’d be interested in seeing how you would use regions to create invoices.
+
+I got involved with Prince when Bert Bos and I wrote a book on CSS. We wanted to see if CSS was good enough for paper-based publishing. We ended up sending a Prince-generated PDF file to the printer. Here’s more about the effortt:
+
+  http://alistapart.com/article/boom
+
+EMBED
+
+Johan Ronsse 3:05 pm on January 26, 2014
+Hi Håkon,
+
+First I want to thank you for your thoughtful answers on every comment in this article.
+
+Prince is exactly what we ended up using in the end to get what we wanted to do (document generation via HTML & CSS, not limited to invoices) working.  I am happy to hear that you are involved with Prince this since that leads me to conclude that within Opera you are definitely pushing for better CSS paged media support.
+
+In a 24Ways article last december, I commented on Prince being great, but in essence an expensive (yet worth it for our business case) polyfill for bad paged media support across browsers.
+
+Now how did I get to using regions to print documents? First I tried wkhtmltopdf but the result was pretty bad. Then I tried to “hack” together a way to get the HTML/CSS content correctly on pages using a combination of A4-sized divs, Chrome’s PDF generation (print to PDF) and CSS regions . One of my thoughts was that I could then somehow point the print to PDF function to print one “A4 wrapper div” per page. I went as far as researching how to make custom virtual printers (cups pdf) but with little success since it’s a mysterious and badly documented world. Maybe I just didn’t find the right resources.
+
+When I discovered how much effort I had to expend to make document generation “maybe” work on “one specific server” we were relieved to find Prince and settled on that.
+
+So one might conclude that my use case is pretty exotic/experimental and not grounded in reality. It should be solved by better CSS paged media support in the future i.e. what gets “polyfilled” by Prince should become the native behavior of print/print to PDF.
+
+The other use case then, specific layouts for interactive installations: arguably you can build good layouts using absolute positioning on the page. CSS regions can be helpful in some cases but really in most article/editorial design style cases you should probably use a combination of CSS columns and if it ever gets some traction, CSS grid.
+
+EMBED
+
+Sara Soueidan 3:33 pm on January 26, 2014
+Hello Mr. Hakon,
+
+The point of that example (which wasn’t created by me, by the way) was to show that you can make regions more flexible and thus prevent their content from breaking when u don’t want it to break.
+
+The main reason this article is controversial and the main reason you consider Regions harmful is because you are judging them based on a couple of examples that, to be honest, are not really good and that convey a not-so-true image of what Regions are supposed to do.
+
+I believe that you know that CSS Regions are not a layout feature, and so I personally would not expect myself to be capable of using them to create a fully flexible and responsive layout like the one from the Web Platform. CSS Regions are useful when they are used the right way, and the right way does not mean using them to replace any layout feature like Multi-Columns.
+
+I personally use CSS Columns in a lot of places, but sometimes they are just not enough. Sometimes I need more control over fragments of a layout, and Columns do not give me that control, but regions do.
+
+Regions are meant to be used in conjunction with layout features, they are not meant to replace any feature, whether that feature is Multi-Columns or any other layout feature.
+
+I strongly disagree that the Regions specification should be considered harmful based on a couple of examples where Regions may have been misused.
+
+Reading your article makes one believe that Regions are there to compete with Columns, but they are not.
+
+EMBED
+
+ Håkon Wium Lie (article author)	5:33 pm on January 26, 2014
+Hello Sara,
+
+If the example I’m using is not good, it should be possible to improve it, no? I’d rather look at an improved example than hearing, repeatedly, that regions are wonderful. Please show me how pull-quotes should be expressed!
+
+EMBED
+
+Sara Soueidan 2:29 am on January 27, 2014
+Hello Mr. Hakon,
+
+Personally? I would definitely use CSS Figures (if they were implemented) to do this, and not CSS Regions, because using a Region to contain the pull-quote has no benefit, since Regions are meant to change the flow of content, and the pull-quote is not really “flowing” anywhere, so there’s no benefit in defining it inside a Region. So I completely agree with your reasoning for the solution of the above layout, and I’m really intrigued by a lot of properties in the Figures spec, they look very very promising!
+
+With that said, I want to clarify my point. My point is not to completely dismiss CSS Regions altogether because they can’t solve this layout problem. They can’t solve it because, from what I understand now, they are not even meant to solve these problems. They do one thing: change the flow of content across containers, and so using them to *define* a layout is not really the best idea.
+
+I suppose that when CSS Regions are used in conjunction with other layout features such as Grids, for example, then they could prove more useful as a fragmentation tool, not a layout tool?
+
+I have seen some interesting examples of use cases for Regions, and I have even used them in a demo of my own that would otherwise not be possible without CSS Regions, and the level of control they gave me over the layout was really great.
+
+I would change my opinion maybe about where I stand if CSS Figures and Columns would offer the same and better control over a layout.
+
+The layout I was talking about can be found here: 
+http://sarasoueidan.com/blog/css-regions-with-shapes-for-readability/
+
+Is there a way defined in the CSS Multi-Column spec that allows me to create those three regions/columns with custom shapes like I did?
+
+P.S. This is *not* a challenge!! I’m just a curious web developer, and I’m really interested in knowing if there’s a better way to do this.
+
+Thank you. :)
+
+EMBED
+
+Peter Sorotokin 4:52 pm on January 27, 2014
+It’s fair to say that each spec should be evaluated on its own merits, but to make a good use of CSS Regions, one would need some sort of page template logic to partition pages into regions in the stylesheet and eliminate the need for dummy div elements (scripting could do that as well). EPUB Adaptive Layout spec has declarative features for that. You can see the demo at http://sorotokin.com/adaptive/ (demo files are fully declarative, but the engine is implemented in JavaScript).
+
+The fundamental difference between CSS Regions / Adaptive Layout approach vs. multicol and figures is that the former make a page appearance a primary point of design (partition the page first and pour content in partitions) and the latter rely on page appearance being synthesized automatically (push the content to various places as you go). I think the former approach is a big win from a design point of view, especially for complex designs where visual conflicts are likely to occur and not easy to resolve.
+
+EMBED
+
+ Håkon Wium Lie (article author)	1:46 pm on January 28, 2014
+Hello Sara,
+
+CSS Figures has three implementations:
+http://people.opera.com/howcome/2013/tests/figures/coverage.html
+The implementations have provided useful feedback and the specification is being developed. 
+Your example is very artistic! I don’t think I would want multicol layout to be stretched into creating these sort of designs. I’m not even sure it make sense to have the columns reflow—perhaps this part of the spectrum should be left for SVG and other formats where lines are pre-formatted.
+
+EMBED
+
+Sara Soueidan 2:26 pm on January 28, 2014
+Hello Mr. Hakon,
+
+So the answer is “No” then, CSS Columns does not give me that kind of control over individual columns.
+
+“Your example is very artistic!”
+- it’s one of many use cases for CSS Regions that cannot be provided by Columns. It’s not about whether a design is artistic or not, it’s about the level of control we, developers and designers, can get over our layout. I may want to style each column by giving them different heights and width, for example, and CSS Columns would still not be able to give me that.
+
+“I don’t think I would want multicol layout to be stretched into creating these sort of designs.”
+- fair enough! maybe then leave that to CSS Regions? :)
+
+“perhaps this part of the spectrum should be left for SVG and other formats where lines are pre-formatted.”
+- OR leave that to CSS Regions. I think that using SVG to create such a simple layout would be a lot more complex than using Regions, at least for someone like me.
+
+I don’t believe this has to be an either-or situation. CSS Regions clearly provide us with a lot more control over fragments of a layout that no other feature does. I’m not saying they should replace Multi-Columns, because, again, this is not an either-or situation. They should both be able to coexist.
+
+EMBED
+
+Mike Sierra 1:52 pm on January 29, 2014
+I agree problem #1 is the most substantial issue, but think there’s an important trade-off. Yes, the dummy div region markup is presentational & un-semantic, but the <article> source content is not. In the WebPlatform example, the embedded pull-quote content behaves as a logical semantic subset of the article. But perhaps just as often on the web, you see semantically extraneous content such as ads, links to other stories, or “share-this” boxes injected within the content tree to achieve a presentational effect local to some rectangle, typically a float. I once wrote an aggregator that had to distinguish the two cases, so may be a little extra sensitive to the issue. Consider the likelihood that regions may make it easier overall to maintain cleaner semantic content separate from presentation. BTW, I wrote the WebPlatform doc, so found the discussion here a good source of suggestions to improve on it. Alan is right, I’m no designer, but still changed the doc to clarify that absolute positioning is pretty retrograde & hypothetical here. Thanks
+
+EMBED
+
+Nick Nussbaum 6:38 pm on January 29, 2014
+One of the things which puzzles me about both figures and regions approaches is whether they support footnotes (and ideally footnote continuations) and side notes (such as section titles in the outside margin. This also doesn’t seem to be covered in the fragmentation manager. Ideally you’d want two linked flows in which text can break in either flow, and where for side notes, they are in different “columns” but aligned with each other and affect each other’s flow breaks.
+
+Am I missing something? What would seem to be needed is a figure “float” property that allows you to specify a target box by name and the ability to say if the depth in the target is aligned with the depth in the source (for side notes) and for footnotes, the ability inset the footnotes in the bottom of the column or multi column area.
+
+Is this out of scope? It seems at least as important as floating figures and it’s possible a well thought out approach might co-ordinate (if not unify) the two approaches.
+
+EMBED
+
+ Håkon Wium Lie (article author)	6:14 pm on January 30, 2014
+Hello Nick,
+
+Footnotes and sidenotes are, indeed, important. The functionality is described in this specification:
+  http://books.spec.whatwg.org/
+The section on named areas (which is what you would use for sidenoted) is fairly new—It would be interesting to hear if it covers your use cases.
+
+EMBED
+
+ Håkon Wium Lie (article author)	6:27 pm on January 30, 2014
+Hello Mike,
+
+I see your point about injected ads etc—we certainly want to keep these away from the text flow itself. In CSS Figures, this is handled by being able to defer a float to a later column or page. So, for example, you can have an <aside> element at the beginning of the article, but delay its presentation until (say) the last column on the second page:
+
+aside {
+  float: top; /* float me to the top of the column */
+  float-defer-column: last; /* the last column, that is */
+  float-defer-page: 1; /* one page after the first */
+}
+
+Pull-quotes can also be handled this way—by using the float-offset property it can be pushed down from the top:
+
+blockquote {
+  float: top; /* float me to the top of the column */
+  float-offset: 5em; /* push me down 5em in the opposite direction*/
+  float-defer-column: 1; /* show me in the second column */
+}
+
+EMBED
+
+ Håkon Wium Lie (article author)	6:34 pm on January 30, 2014
+Hello Sara,
+
+I didn’t mean to say that columns cannot be combined with exclusions; they certainly can:
+http://figures.spec.whatwg.org/#wrapping
+However, personally I would not try reproducing your example in columns or any other CSS—I think too much of the message is in your shapes and if your users are on a small screen, it will be hard to convey this important part. So, personally, I’d probably use SVG.
+
+EMBED
+
+ Håkon Wium Lie (article author)	6:44 pm on January 30, 2014
+Hello Peter,
+
+I think your spec and examples are great—you are actually expressing boxes in CSS and I wish that the CSS WG had started out with your design instead of basing it on HTML elements.
+
+I also agree with your high-level characterization of the two approaches. I think the page-oriented approach makes sense when a known-size paper or screen is the target—you can then make efforts to perfect the presentation. I believe the item-oriented approach (to give it a name) makes more sense when you don’t know the size of the output; the formatter can more easily synthesize the presentation to the size of the user’s device.
+
+As an example, when making page templates, you would have different page templates for two-column and three-column designs, no? And then you would have (the option of having) different templates based on whether there was one, two, or three images on the page? The combinatorial explosion quickly kicks in, and only the most resourceful sites will write page templates for all circumstances. The item-oriented approach, however, relies on each item knowing, roughly, where it wants to be no matter what kind of screen it is on. And media queries can be used to cover cases when you want/need an phase change.
+
+EMBED
+
+Peter Sorotokin 9:19 pm on January 30, 2014
+Well, in many respects CSS Regions spec is actually a descendant of Adaptive Layout (or more precisely, they are both descendants of something called “PGT”: https://code.google.com/p/epub-revision/source/detail?r=2026 is I think the earliest public spec). Early in CSS Region discussions it was decided that anonymous box creation is a more generic issue and should be handled separately. Unfortunately, not much moved on that issue since then. From the document mark-up design perspective, anonymous box generation on pages is required. However, the truth is, web browsers are not paginated layout engines (or at least they are fairly poor at that), but application engines. Having a facility like CSS Regions helps immensely in building web apps for publishing irrespective of the need for artificial container elements. Web apps would want them anyway, as real elements, unlike anonymous boxes, are scriptable (and this is, I suspect, the reason why there is no sustained interest in anonymous box creation).
+
+Columns in page design: no need for separate templates, Adaptive Layout merely uses CSS Multicolumn, so you just specify the desired column width. You’d only need a separate template if your “columns” are complex shapes (like what Sara’s example has).
+
+Many images/sidebars on a page: while it’s possible to create a single complex template that resolves the conflicts, but that is in general not what a designer would do. A designer (in real world) would actually create a design for page partitioned for each desired permutation. If there is no design where all available content can fit, that content will be deferred for the next page. This is the only sane way to produce complex designs en masse - otherwise too much testing for various screen and font sizes is needed (exactly because of the combinatorial explosion that you mentioned). A complex template may be used in some cases (e.g. for technical manuals, when a lot of documents are expected to use it), but it becomes almost like software and requires skills similar to software engineering.
+
+Again, the single most important point is that the overall page appearance must be a primary object of design, not merely a result of some computation with a multitude of parameters and conflict-resolution rules. In high-end designs found in magazines and textbooks, the conflicts between various page elements cannot be resolved based on a set of rules, because these conflicts are aesthetic, not geometrical in nature.
+
+EMBED
+
+ Håkon Wium Lie (article author)	7:26 am on January 31, 2014
+Hello Peter, I agree with most of your observations. And I’m happy hear that your think muliticol elements can be combined with page templates. The Regions demos I have seen have most often failed to e.g. recompute the number of columns on narrow screens. I’m happy to see that you do this in your demos (referred to in your first message).
+As for high-end designs, they will probably be hand-made—or at least hand-adjusted—for the forseeable future. But it’s not realistic that all content is hand-adjusted for all screens—we would probably have to educate more typographers than anything else. It’s important to be able to create scalable, responsive designs in few lines of code. This, I believe, is achieved here:
+
+http://people.opera.com/howcome/2013/10-figures/
+
+Regarding apps vs. documents, I think the app-makers have other goals and priorities, and CSS Regions doesn’t actually solve their real issues.
+
+EMBED
+
+Mike Sierra 2:03 pm on January 31, 2014
+Thanks for the context about CSS Figures. It looks very enticing, and I hope it offers a way to unify CSS’s many visual models. (The name seems unclear, though, much like calling it “CSS Asides”.)  I’m not sure if your example of a deferred float addresses the problem I brought up.  Embedding extraneous content within an <article> is un-semantic, regardless of whether it’s declared at the start or if it interrupts the middle. Maybe the solution would be a multi-column wrapper so that the extraneous <aside> content can float somewhere within the layout of a peer <article> element. But that seems to bake in additional semantic layers in order to influence the presentation, whose visual model is strongly biased towards nested rectangles.  I see it as part of the same trade-off, where either way presentational artifacts appear within the markup.
+
+EMBED
+
+ Håkon Wium Lie (article author)	7:20 pm on January 31, 2014
+Hello Mike,
+
+In a paper magazine, when a full-page ad interrupts an article, is the ad inside the article, or not? I don’t know if there is a correct answer to the question, and I’m not sure it matters. But, as you suggest, the multicol properties can be set on an ancestor to <article>, for example <body>. And, if you prefer, <article> and <aside class=ad> could be siblings inside the <body> element.
+
+EMBED
+
+ Håkon Wium Lie (article author)	6:07 am on February 01, 2014
+Hello Johan,
+
+It was interesting to hear how you came to use Prince. A free non-commercial version of Prince is available from www.princexml.com, but the software costs money if you want to use it commercially. Browsers have revenue from searches and such, while HTML-to-PDF-via-CSS batch formatters don’t have that option :-(
+
+Anyway, I hope that browsers will improve their support for paged media. I’ve been pushing for browsers not just to do better printing, but also to paginate web pages on-screen. For example, on tablets it often makes more sense to swipe to the next page instead of trying to control an unruly scrollbar. Rhetorical question: when did you last read a novel with a scrollbar? Opera 12.x has some support for this, you can read more about it here:
+
+  http://people.opera.com/howcome/2012/reader
+
+EMBED
+
+adsf 7:25 pm on February 04, 2014
+You lost my trust right after problem #3 and after re-read the whole article I found it filled with more prejudice than persuasiveness, I would assume you could do better job supporting the “considered harmful” argument, but it did.
+
+EMBED
+
+ Håkon Wium Lie (article author)	12:06 pm on February 05, 2014
+Hello adsf, I’m happy to discuss with you if you provide some reasoning. Also, I suggest that you use your real name in these discussions.
+
+EMBED
+
+Wisdom 3:59 am on April 03, 2014
+I think the CSS regions proposed by Adobe can still change web look at a great extent.
+
+EMBED
+
+Christoph Päper 9:01 am on July 24, 2014
+Ah, bad memories here. I proposed @region and :region() early on to counter Problem #1, but it seems to never have caught on.
+
+EMBED
+
+A. Babenhauserheide 12:22 pm on October 12, 2014
+Regions sound much like the XML used in Scribus: DTD tech from layouting sheets of paper.
+
+</pre>
+</body>
+</html>

@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="author" content="smallnest">
+    <meta name="description" content="">
+    <title>gulp plugins 插件介绍</title>
+    <link rel="stylesheet" href="css/global.css" media="all">
+</head>
+<body>
+<a href="http://colobu.com/2014/11/17/gulp-plugins-introduction/#gulp-inject">the link of articles</a><br>
+
+<p>目录 [−]</p><br>
+<p></p><br>
+<p>gulp API</p><br>
+<p>gulp.src(globs[, options])</p><br>
+<p>gulp.dest(path[, options])</p><br>
+<p>gulp.task(name[, deps], fn)</p><br>
+<p>gulp.watch(glob [, opts], tasks), gulp.watch(glob [, opts, cb])</p><br>
+<p>Recipes</p><br>
+<p>gulp-browserify</p><br>
+<p>gulp-jshint</p><br>
+<p>gulp-jslint</p><br>
+<p>imagemin</p><br>
+<p>glup-sass</p><br>
+<p>browser-sync</p><br>
+<p>gulp-handlebars</p><br>
+<p>gulp-usemin</p><br>
+<p>gulp-uglify</p><br>
+<p>gulp-sourcemaps</p><br>
+<p>其它一些关注度高的gulp插件</p><br>
+<p>gulp-inject</p><br>
+<p>gulp-header</p><br>
+<p>gulp-filter</p><br>
+<p>gulp-changed</p><br>
+<p>gulp-bower</p><br>
+<p>gulp-if</p><br>
+<p>gulp-replace</p><br>
+<p>gulp-shell</p><br>
+<p>gulp-exec</p><br>
+<p>gulp-install</p><br>
+<p>gulp-rename</p><br>
+<p>gulp-ignore</p><br>
+<p>gulp-util</p><br>
+<p>gulp-clean</p><br>
+<p>gulp-concat</p><br>
+<p>gulp-wrap</p><br>
+<p>gulp-declare</p><br>
+<p>更多的文章</p><br>
+<p>Gulp是一个构建工具， 功能类似grunt, 以及Java生态圈的ant, maven， gradle等。 其它的javascript生态圈的构建工具可以参考: List of JavaScript Build Tools</p><br>
+<p>它采用了一种流式处理的方式， 编写起来简单直观。 相对于其它javascript构建工具， 母亲啊它的star数是仅次于grunt，流行度还是比较高的。</p><br>
+<p>通过"代码优于配置" (code over configuration), 通过javascript编写构建任务， 充分利用javascript生态圈的组件， 可以实现简单灵活的任务管理。 通过node stream的方式，直接在内存中管道式处理流，不必缓存到硬盘上， 节省构建时间。</p><br>
+<p></p><br>
+<p>Gulp介绍请参考我转载的另一篇文章： Building With Gulp</p><br>
+<p>另外有一篇很好的入门文章： Getting started with gulp, 繁体版, 简体中文硬翻版</p><br>
+<p></p><br>
+<p>从我的实践上来看， gulp要比grunt更好的管理构建过程。 编写简单，条理清晰，功能强大，学习无曲线。</p><br>
+<p></p><br>
+<p>Gulp是基于Node.js构建的，因此Gulp源文件和你用来定义任务的Gulp文件都被写进了JavaScript（或者CoffeeScript）里。 Gulp本身虽然不能完成很多任务，但它有大量插件可用，开发者可以访问插件页面或者在npm搜索gulpplugin或者gulpfriendly就能看到。例如，有些插件可以用来执行JSHint、编译CoffeeScript，执行Mocha测试，甚至更新版本号。现在有大约980个左右的插件可以使用。你可以到http://gulpjs.com/plugins/或者http://npmsearch.com/?q=keywords:gulpplugin查找所需的软件。</p><br>
+<p>面对如此众多的插件， 想要全部了解并灵活运用它们几乎是不可能的事情。 实际开发中多参考别的项目的实现， 根据自己的需求寻找合适的插件， 总结并开发自己的插件， 逐步积累对gulp的认识。</p><br>
+<p></p><br>
+<p>本文列出常用的几个插件， 并在将来的开发中更新此文作为记录文档。 多个插件和grunt的插件功能类似。</p><br>
+<p></p><br>
+<p>首先介绍以下gulp本身的API， 相当的简洁，只有几个函数。</p><br>
+<p></p><br>
+<p>gulp API</p><br>
+<p></p><br>
+<p>流(Stream)能够通过一系列的小函数来传递数据，这些函数会对数据进行修改，然后把修改后的数据传递给下一个函数。</p><br>
+<p>看一个简单例子：</p><br>
+<p></p><br>
+<p>1</p><br>
+<p>2</p><br>
+<p>3</p><br>
+<p>4</p><br>
+<p>5</p><br>
+<p>6</p><br>
+<p>7</p><br>
+<p>8</p><br>
+<p>var gulp = require('gulp'),</p><br>
+   <p>uglify = require('gulp-uglify');</p><br>
+<p>gulp.task('minify', function () {</p><br>
+   <p>gulp.src('js/app.js')</p><br>
+      <p>.pipe(uglify())</p><br>
+      <p>.pipe(gulp.dest('build'))</p><br>
+<p>});</p><br>
+<p>gulp.src()函数用字符串匹配一个文件或者文件的编号（被称为“glob”）,然后创建一个对象流来代表这些文件，接着传递给uglify()函数，它接受文件对象之后返回有新压缩源文件的文件对象，最后那些输出的文件被输入gulp.dest()函数，并保存下来。</p><br>
+<p></p><br>
+<p>想了解更多的关于node stream方面的知识，可以访问stream-handbook。 stream-handbook中文翻译</p><br>
+<p></p><br>
+<p>gulp.src(globs[, options])</p><br>
+<p></p><br>
+<p>根据globs提供的文件列表， 得到一个Vinyl文件的stream, 可以按照管道模式给其它插件处理。</p><br>
+<p></p><br>
+<p>1</p><br>
+<p>2</p><br>
+<p>3</p><br>
+<p>4</p><br>
+<p>gulp.src('client/templates/*.jade')</p><br>
+  <p>.pipe(jade())</p><br>
+  <p>.pipe(minify())</p><br>
+  <p>.pipe(gulp.dest('build/minified_templates'));</p><br>
+<p>gulp.dest(path[, options])</p><br>
+<p></p><br>
+<p>将管道中的数据写入到文件夹。</p><br>
+<p></p><br>
+<p>gulp.task(name[, deps], fn)</p><br>
+<p></p><br>
+<p>使用orchestrator定义任务。</p><br>
+<p></p><br>
+<p>1</p><br>
+<p>2</p><br>
+<p>3</p><br>
+<p>gulp.task('somename', function() {</p><br>
+  <p>// Do stuff</p><br>
+<p>});</p><br>
+<p>deps 是任务数组，在执行本任务时数组中的任务要执行并完成。</p><br>
+<p></p><br>
+<p>gulp.watch(glob [, opts], tasks), gulp.watch(glob [, opts, cb])</p><br>
+<p></p><br>
+<p>监控文件。当监控的文件有所改变时执行特定的任务。</p><br>
+<p></p><br>
+<p>Recipes</p><br>
+<p></p><br>
+<p>下面的文章总结的几个常见问题的解决方案，非常有参考价值。</p><br>
+<p>https://github.com/gulpjs/gulp/tree/master/docs/recipes#recipes</p><br>
+<p></p><br>
+<p>gulp-browserify</p><br>
+<p></p><br>
+<p>browserify可以为浏览器编译node风格的遵循commonjs的模块。 它搜索文件中的require()调用， 递归的建立模块依赖图。</p><br>
+<p></p><br>
+<p>1</p><br>
+<p>2</p><br>
+<p>3</p><br>
+<p>4</p><br>
+<p>5</p><br>
+<p>6</p><br>
+<p>7</p><br>
+<p>8</p><br>
+<p>9</p><br>
+<p>10</p><br>
+<p>11</p><br>
+<p>12</p><br>
+<p>13</p><br>
+<p>var gulp = require('gulp');</p><br>
+<p>var browserify = require('gulp-browserify');</p><br>
+<p>// Basic usage</p><br>
+<p>gulp.task('scripts', function() {</p><br>
+    <p>// Single entry point to browserify</p><br>
+    <p>gulp.src('src/js/app.js')</p><br>
+        <p>.pipe(browserify({</p><br>
+          <p>insertGlobals : true,</p><br>
+          <p>debug : !gulp.env.production</p><br>
+        <p>}))</p><br>
+        <p>.pipe(gulp.dest('./build/js'))</p><br>
+<p>});</p><br>
+<p>gulp-jshint</p><br>
+<p></p><br>
+<p>gulp的jshint插件。</p><br>
+<p>jshint是一个侦测javascript代码中错误和潜在问题的工具。</p><br>
+<p></p><br>
+<p>用法:</p><br>
+<p></p><br>
+<p>1</p><br>
+<p>2</p><br>
+<p>3</p><br>
+<p>4</p><br>
+<p>5</p><br>
+<p>6</p><br>
+<p>7</p><br>
+<p>8</p><br>
+<p>var jshint = require('gulp-jshint');</p><br>
+<p>var gulp   = require('gulp');</p><br>
+<p>gulp.task('lint', function() {</p><br>
+  <p>return gulp.src('./lib/*.js')</p><br>
+    <p>.pipe(jshint())</p><br>
+    <p>.pipe(jshint.reporter('YOUR_REPORTER_HERE'));</p><br>
+<p>});</p><br>
+<p>gulp-jslint</p><br>
+<p></p><br>
+<p>jslint是一个javascript代码质量检测工具。</p><br>
+<p>gulp-jslint是它的gulp插件。</p><br>
+<p></p><br>
+<p>1</p><br>
+<p>2</p><br>
+<p>3</p><br>
+<p>4</p><br>
+<p>5</p><br>
+<p>6</p><br>
+<p>7</p><br>
+<p>8</p><br>
+<p>9</p><br>
+<p>10</p><br>
+<p>11</p><br>
+<p>12</p><br>
+<p>13</p><br>
+<p>14</p><br>
+<p>15</p><br>
+<p>16</p><br>
+<p>17</p><br>
+<p>18</p><br>
+<p>19</p><br>
+<p>20</p><br>
+<p>21</p><br>
+<p>22</p><br>
+<p>23</p><br>
+<p>24</p><br>
+<p>25</p><br>
+<p>26</p><br>
+<p>27</p><br>
+<p>28</p><br>
+<p>29</p><br>
+<p>30</p><br>
+<p>31</p><br>
+<p>32</p><br>
+<p>33</p><br>
+<p>34</p><br>
+<p>35</p><br>
+<p>36</p><br>
+<p>37</p><br>
+<p>38</p><br>
+<p>39</p><br>
+<p>40</p><br>
+<p>41</p><br>
+<p>42</p><br>
+<p>43</p><br>
+<p>44</p><br>
+<p>45</p><br>
+<p>46</p><br>
+<p>47</p><br>
+<p>48</p><br>
+<p>49</p><br>
+<p>50</p><br>
+<p>51</p><br>
+<p>var gulp = require('gulp');</p><br>
+<p>var jslint = require('gulp-jslint');</p><br>
+<p>// build the main source into the min file</p><br>
+<p>gulp.task('default', function () {</p><br>
+    <p>return gulp.src(['source.js'])</p><br>
+        <p>// pass your directives</p><br>
+        <p>// as an object</p><br>
+        <p>.pipe(jslint({</p><br>
+            <p>// these directives can</p><br>
+            <p>// be found in the official</p><br>
+            <p>// JSLint documentation.</p><br>
+            <p>node: true,</p><br>
+            <p>evil: true,</p><br>
+            <p>nomen: true,</p><br>
+            <p>// you can also set global</p><br>
+            <p>// declarations for all source</p><br>
+            <p>// files like so:</p><br>
+            <p>global: [],</p><br>
+            <p>predef: [],</p><br>
+            <p>// both ways will achieve the</p><br>
+            <p>// same result; predef will be</p><br>
+            <p>// given priority because it is</p><br>
+            <p>// promoted by JSLint</p><br>
+            <p>// pass in your prefered</p><br>
+            <p>// reporter like so:</p><br>
+            <p>reporter: 'default',</p><br>
+            <p>// ^ there's no need to tell gulp-jslint</p><br>
+            <p>// to use the default reporter. If there is</p><br>
+            <p>// no reporter specified, gulp-jslint will use</p><br>
+            <p>// its own.</p><br>
+            <p>// specify whether or not</p><br>
+            <p>// to show 'PASS' messages</p><br>
+            <p>// for built-in reporter</p><br>
+            <p>errorsOnly: false</p><br>
+        <p>}))</p><br>
+        <p>// error handling:</p><br>
+        <p>// to handle on error, simply</p><br>
+        <p>// bind yourself to the error event</p><br>
+        <p>// of the stream, and use the only</p><br>
+        <p>// argument as the error object</p><br>
+        <p>// (error instanceof Error)</p><br>
+        <p>.on('error', function (error) {</p><br>
+            <p>console.error(String(error));</p><br>
+        <p>});</p><br>
+<p>});</p><br>
+<p>imagemin</p><br>
+<p></p><br>
+<p>imagemin是压缩图片的工具。</p><br>
+<p></p><br>
+<p>1</p><br>
+<p>2</p><br>
+<p>3</p><br>
+<p>4</p><br>
+<p>5</p><br>
+<p>6</p><br>
+<p>7</p><br>
+<p>8</p><br>
+<p>9</p><br>
+<p>10</p><br>
+<p>11</p><br>
+<p>12</p><br>
+<p>13</p><br>
+<p>var gulp = require('gulp');</p><br>
+<p>var imagemin = require('gulp-imagemin');</p><br>
+<p>var pngquant = require('imagemin-pngquant');</p><br>
+<p>gulp.task('default', function () {</p><br>
+    <p>return gulp.src('src/images/*')</p><br>
+        <p>.pipe(imagemin({</p><br>
+            <p>progressive: true,</p><br>
+            <p>svgoPlugins: [{removeViewBox: false}],</p><br>
+            <p>use: [pngquant()]</p><br>
+        <p>}))</p><br>
+        <p>.pipe(gulp.dest('dist'));</p><br>
+<p>});</p><br>
+<p>glup-sass</p><br>
+<p></p><br>
+<p>sass是编写css的一套语法。 使用它的预处理器可以将sass语法的css处理成css格式。</p><br>
+<p>glup-sass语法：</p><br>
+<p></p><br>
+<p>1</p><br>
+<p>2</p><br>
+<p>3</p><br>
+<p>4</p><br>
+<p>5</p><br>
+<p>6</p><br>
+<p>7</p><br>
+<p>8</p><br>
+<p>var gulp = require('gulp');</p><br>
+<p>var sass = require('gulp-sass');</p><br>
+<p>gulp.task('sass', function () {</p><br>
+    <p>gulp.src('./scss/*.scss')</p><br>
+        <p>.pipe(sass())</p><br>
+        <p>.pipe(gulp.dest('./css'));</p><br>
+<p>});</p><br>
+<p>gulp-ruby-sass是另外一款sass的gulp插件， 比glup-sass慢，但是更稳定，功能更多。 它使用compass预处理sass文件，所以你需要安装ruby和compass。</p><br>
+<p></p><br>
+<p>1</p><br>
+<p>2</p><br>
+<p>3</p><br>
+<p>4</p><br>
+<p>5</p><br>
+<p>6</p><br>
+<p>7</p><br>
+<p>8</p><br>
+<p>9</p><br>
+<p>var gulp = require('gulp');</p><br>
+<p>var sass = require('gulp-ruby-sass');</p><br>
+<p>gulp.task('default', function () {</p><br>
+    <p>return gulp.src('src/scss/app.scss')</p><br>
+        <p>.pipe(sass({sourcemap: true, sourcemapPath: '../scss'}))</p><br>
+        <p>.on('error', function (err) { console.log(err.message); })</p><br>
+        <p>.pipe(gulp.dest('dist/css'));</p><br>
+<p>});</p><br>
+<p>browser-sync</p><br>
+<p></p><br>
+<p>BrowserSync 是一个自动化测试辅助工具，可以帮你在网页文件变更时自动载入新的网页。</p><br>
+<p>用法：</p><br>
+<p></p><br>
+<p>1</p><br>
+<p>2</p><br>
+<p>3</p><br>
+<p>4</p><br>
+<p>5</p><br>
+<p>6</p><br>
+<p>7</p><br>
+<p>8</p><br>
+<p>9</p><br>
+<p>10</p><br>
+<p>11</p><br>
+<p>12</p><br>
+<p>13</p><br>
+<p>14</p><br>
+<p>15</p><br>
+<p>16</p><br>
+<p>17</p><br>
+<p>18</p><br>
+<p>19</p><br>
+<p>var gulp        = require('gulp');</p><br>
+<p>var browserSync = require('browser-sync');</p><br>
+<p>// Static server</p><br>
+<p>gulp.task('browser-sync', function() {</p><br>
+    <p>browserSync({</p><br>
+        <p>server: {</p><br>
+            <p>baseDir: "./"</p><br>
+        <p>}</p><br>
+    <p>});</p><br>
+<p>});</p><br>
+<p>// or...</p><br>
+<p>gulp.task('browser-sync', function() {</p><br>
+    <p>browserSync({</p><br>
+        <p>proxy: "yourlocal.dev"</p><br>
+    <p>});</p><br>
+<p>});</p><br>
+<p>还可以使用proxy-middleware作为http proxy,转发特定的请求。</p><br>
+<p></p><br>
+<p>gulp-handlebars</p><br>
+<p></p><br>
+<p>handlebars是一个模版引擎库， ember.js用它作为前端的模版引擎。</p><br>
+<p>gulp-handlebars编译handlebars文件。</p><br>
+<p></p><br>
+<p>用法：</p><br>
+<p></p><br>
+<p>1</p><br>
+<p>2</p><br>
+<p>3</p><br>
+<p>4</p><br>
+<p>5</p><br>
+<p>6</p><br>
+<p>7</p><br>
+<p>8</p><br>
+<p>9</p><br>
+<p>10</p><br>
+<p>11</p><br>
+<p>12</p><br>
+<p>13</p><br>
+<p>14</p><br>
+<p>15</p><br>
+<p>16</p><br>
+<p>var handlebars = require('gulp-handlebars');</p><br>
+<p>var wrap = require('gulp-wrap');</p><br>
+<p>var declare = require('gulp-declare');</p><br>
+<p>var concat = require('gulp-concat');</p><br>
+<p>gulp.task('templates', function(){</p><br>
+  <p>gulp.src('source/templates/*.hbs')</p><br>
+    <p>.pipe(handlebars())</p><br>
+    <p>.pipe(wrap('Handlebars.template(<%= contents %>)'))</p><br>
+    <p>.pipe(declare({</p><br>
+      <p>namespace: 'MyApp.templates',</p><br>
+      <p>noRedeclare: true, // Avoid duplicate declarations</p><br>
+    <p>}))</p><br>
+    <p>.pipe(concat('templates.js'))</p><br>
+    <p>.pipe(gulp.dest('build/js/'));</p><br>
+<p>});</p><br>
+<p>gulp-usemin</p><br>
+<p></p><br>
+<p>用来将HTML 文件中（或者templates/views）中没有优化的script 和stylesheets 替换为优化过的版本。</p><br>
+<p>usemin 暴露两个内置的任务，分别为：</p><br>
+<p></p><br>
+<p>useminPrepare 为将指定文件中的 usemin block 转换为单独的一行（优化版本）准备配置。这通过为每个优化步骤生成名为 generated 的子任务来完成。</p><br>
+<p>usemin 使用优化版本替换 usemin 块，如果在磁盘上可以找到 revisioned 版本，则替换为 revisioned 版本。</p><br>
+<p>usemin块如下定义：</p><br>
+<p></p><br>
+<p>1</p><br>
+<p>2</p><br>
+<p>3</p><br>
+<p><!-- build:<pipelineId>(alternate search path) <path> --></p><br>
+<p>... HTML Markup, list of script / link tags.</p><br>
+<p><!-- endbuild --></p><br>
+<p>如</p><br>
+<p></p><br>
+<p>1</p><br>
+<p>2</p><br>
+<p>3</p><br>
+<p>4</p><br>
+<p>5</p><br>
+<p>6</p><br>
+<p>7</p><br>
+<p>8</p><br>
+<p>9</p><br>
+<p>10</p><br>
+<p>11</p><br>
+<p>12</p><br>
+<p>13</p><br>
+<p>14</p><br>
+<p>15</p><br>
+<p>16</p><br>
+<p>17</p><br>
+<p>18</p><br>
+<p>19</p><br>
+<p>20</p><br>
+<p><!-- build:css style.css --></p><br>
+<p><link rel="stylesheet" href="css/clear.css"/></p><br>
+<p><link rel="stylesheet" href="css/main.css"/></p><br>
+<p><!-- endbuild --></p><br>
+<p><!-- build:js js/lib.js --></p><br>
+<p><script src="../lib/angular-min.js"></script></p><br>
+<p><script src="../lib/angular-animate-min.js"></script></p><br>
+<p><!-- endbuild --></p><br>
+<p><!-- build:js1 js/app.js --></p><br>
+<p><script src="js/app.js"></script></p><br>
+<p><script src="js/controllers/thing-controller.js"></script></p><br>
+<p><script src="js/models/thing-model.js"></script></p><br>
+<p><script src="js/views/thing-view.js"></script></p><br>
+<p><!-- endbuild --></p><br>
+<p><!-- build:remove --></p><br>
+<p><script src="js/localhostDependencies.js"></script></p><br>
+<p><!-- endbuild --></p><br>
+<p>gulp-usemin用法如下：</p><br>
+<p></p><br>
+<p>1</p><br>
+<p>2</p><br>
+<p>3</p><br>
+<p>4</p><br>
+<p>5</p><br>
+<p>6</p><br>
+<p>7</p><br>
+<p>8</p><br>
+<p>9</p><br>
+<p>10</p><br>
+<p>11</p><br>
+<p>12</p><br>
+<p>13</p><br>
+<p>14</p><br>
+<p>15</p><br>
+<p>var usemin = require('gulp-usemin');</p><br>
+<p>var uglify = require('gulp-uglify');</p><br>
+<p>var minifyHtml = require('gulp-minify-html');</p><br>
+<p>var minifyCss = require('gulp-minify-css');</p><br>
+<p>var rev = require('gulp-rev');</p><br>
+<p>gulp.task('usemin', function() {</p><br>
+  <p>gulp.src('./*.html')</p><br>
+    <p>.pipe(usemin({</p><br>
+      <p>css: [minifyCss(), 'concat'],</p><br>
+      <p>html: [minifyHtml({empty: true})],</p><br>
+      <p>js: [uglify(), rev()]</p><br>
+    <p>}))</p><br>
+    <p>.pipe(gulp.dest('build/'));</p><br>
+<p>});</p><br>
+<p>gulp-uglify</p><br>
+<p></p><br>
+<p>uglify是一款javascript代码优化工具，可以解析，压缩和美化javascript。</p><br>
+<p>用法：</p><br>
+<p></p><br>
+<p>1</p><br>
+<p>2</p><br>
+<p>3</p><br>
+<p>4</p><br>
+<p>5</p><br>
+<p>6</p><br>
+<p>7</p><br>
+<p>var uglify = require('gulp-uglify');</p><br>
+<p>gulp.task('compress', function() {</p><br>
+  <p>gulp.src('lib/*.js')</p><br>
+    <p>.pipe(uglify())</p><br>
+    <p>.pipe(gulp.dest('dist'))</p><br>
+<p>});</p><br>
+<p>gulp-sourcemaps</p><br>
+<p></p><br>
+<p>在现代javascript开发中， JavaScript脚本正变得越来越复杂。大部分源码（尤其是各种函数库和框架）都要经过转换，才能投入生产环境。</p><br>
+<p>常见的转换情况：</p><br>
+<p></p><br>
+<p>压缩，减小体积。</p><br>
+<p>多个文件合并，减少HTTP请求数。</p><br>
+<p>其他语言编译成JavaScript。最常见的例子就是CoffeeScript。</p><br>
+<p>这三种情况，都使得实际运行的代码不同于开发代码，除错（debug）变得困难重重。</p><br>
+<p>Source map就是一个信息文件，里面储存着位置信息。也就是说，转换后的代码的每一个位置，所对应的转换前的位置。有了它，出错的时候，除错工具将直接显示原始代码，而不是转换后的代码。</p><br>
+<p>1</p><br>
+<p>2</p><br>
+<p>3</p><br>
+<p>4</p><br>
+<p>5</p><br>
+<p>6</p><br>
+<p>7</p><br>
+<p>8</p><br>
+<p>9</p><br>
+<p>10</p><br>
+<p>11</p><br>
+<p>12</p><br>
+<p>13</p><br>
+<p>var gulp = require('gulp');</p><br>
+<p>var plugin1 = require('gulp-plugin1');</p><br>
+<p>var plugin2 = require('gulp-plugin2');</p><br>
+<p>var sourcemaps = require('gulp-sourcemaps');</p><br>
+<p>gulp.task('javascript', function() {</p><br>
+  <p>gulp.src('src/**/*.js')</p><br>
+    <p>.pipe(sourcemaps.init())</p><br>
+      <p>.pipe(plugin1())</p><br>
+      <p>.pipe(plugin2())</p><br>
+    <p>.pipe(sourcemaps.write())</p><br>
+    <p>.pipe(gulp.dest('dist'));</p><br>
+<p>});</p><br>
+<p>其它一些关注度高的gulp插件</p><br>
+<p></p><br>
+<p>gulp-inject</p><br>
+<p></p><br>
+<p>可以注入css,javascript和web组件，不需手工更新ndex.html。</p><br>
+<p></p><br>
+<p>1</p><br>
+<p>2</p><br>
+<p>3</p><br>
+<p>4</p><br>
+<p>5</p><br>
+<p>6</p><br>
+<p>7</p><br>
+<p>8</p><br>
+<p>9</p><br>
+<p>10</p><br>
+<p>11</p><br>
+<p>12</p><br>
+<p>13</p><br>
+<p><!DOCTYPE html></p><br>
+<p><html></p><br>
+<p><head></p><br>
+  <p><title>My index</title></p><br>
+  <p><!-- inject:css --></p><br>
+  <p><!-- endinject --></p><br>
+<p></head></p><br>
+<p><body></p><br>
+  <p><!-- inject:js --></p><br>
+  <p><!-- endinject --></p><br>
+<p></body></p><br>
+<p></html></p><br>
+<p>1</p><br>
+<p>2</p><br>
+<p>3</p><br>
+<p>4</p><br>
+<p>5</p><br>
+<p>6</p><br>
+<p>7</p><br>
+<p>8</p><br>
+<p>9</p><br>
+<p>10</p><br>
+<p>11</p><br>
+<p>var gulp = require('gulp');</p><br>
+<p>var inject = require("gulp-inject");</p><br>
+<p>gulp.task('index', function () {</p><br>
+  <p>var target = gulp.src('./src/index.html');</p><br>
+  <p>// It's not necessary to read the files (will speed up things), we're only after their paths:</p><br>
+  <p>var sources = gulp.src(['./src/**/*.js', './src/**/*.css'], {read: false});</p><br>
+  <p>return target.pipe(inject(sources))</p><br>
+    <p>.pipe(gulp.dest('./src'));</p><br>
+<p>});</p><br>
+<p>gulp-header</p><br>
+<p></p><br>
+<p>为管道中的文件增加header。</p><br>
+<p></p><br>
+<p>1</p><br>
+<p>2</p><br>
+<p>3</p><br>
+<p>4</p><br>
+<p>5</p><br>
+<p>6</p><br>
+<p>7</p><br>
+<p>8</p><br>
+<p>9</p><br>
+<p>10</p><br>
+<p>11</p><br>
+<p>12</p><br>
+<p>13</p><br>
+<p>14</p><br>
+<p>15</p><br>
+<p>16</p><br>
+<p>17</p><br>
+<p>18</p><br>
+<p>19</p><br>
+<p>20</p><br>
+<p>21</p><br>
+<p>22</p><br>
+<p>23</p><br>
+<p>24</p><br>
+<p>25</p><br>
+<p>26</p><br>
+<p>27</p><br>
+<p>28</p><br>
+<p>29</p><br>
+<p>30</p><br>
+<p>var header = require('gulp-header');</p><br>
+<p>gulp.src('./foo/*.js')</p><br>
+  <p>.pipe(header('Hello'))</p><br>
+  <p>.pipe(gulp.dest('./dist/')</p><br>
+<p>gulp.src('./foo/*.js')</p><br>
+  <p>.pipe(header('Hello <%= name %>\n', { name : 'World'} ))</p><br>
+  <p>.pipe(gulp.dest('./dist/')</p><br>
+<p>gulp.src('./foo/*.js')</p><br>
+  <p>.pipe(header('Hello ${name}\n', { name : 'World'} ))</p><br>
+  <p>.pipe(gulp.dest('./dist/')</p><br>
+<p>//</p><br>
+<p>var pkg = require('./package.json');</p><br>
+<p>var banner = ['/**',</p><br>
+  <p>' * <%= pkg.name %> - <%= pkg.description %>',</p><br>
+  <p>' * @version v<%= pkg.version %>',</p><br>
+  <p>' * @link <%= pkg.homepage %>',</p><br>
+  <p>' * @license <%= pkg.license %>',</p><br>
+  <p>' */',</p><br>
+  <p>''].join('\n');</p><br>
+<p>gulp.src('./foo/*.js')</p><br>
+  <p>.pipe(header(banner, { pkg : pkg } ))</p><br>
+  <p>.pipe(gulp.dest('./dist/')</p><br>
+<p>相应的还有一个gulp-footer插件。</p><br>
+<p></p><br>
+<p>gulp-filter</p><br>
+<p></p><br>
+<p>筛选vinyl stream中的文件。</p><br>
+<p></p><br>
+<p>1</p><br>
+<p>2</p><br>
+<p>3</p><br>
+<p>4</p><br>
+<p>5</p><br>
+<p>6</p><br>
+<p>7</p><br>
+<p>8</p><br>
+<p>9</p><br>
+<p>10</p><br>
+<p>11</p><br>
+<p>12</p><br>
+<p>13</p><br>
+<p>14</p><br>
+<p>15</p><br>
+<p>16</p><br>
+<p>17</p><br>
+<p>var gulp = require('gulp');</p><br>
+<p>var jscs = require('gulp-jscs');</p><br>
+<p>var gulpFilter = require('gulp-filter');</p><br>
+<p>gulp.task('default', function () {</p><br>
+    <p>// create filter instance inside task function</p><br>
+    <p>var filter = gulpFilter(['*', '!src/vendor']);</p><br>
+    <p>return gulp.src('src/*.js')</p><br>
+        <p>// filter a subset of the files</p><br>
+        <p>.pipe(filter)</p><br>
+        <p>// run them through a plugin</p><br>
+        <p>.pipe(jscs())</p><br>
+        <p>// bring back the previously filtered out files (optional)</p><br>
+        <p>.pipe(filter.restore())</p><br>
+        <p>.pipe(gulp.dest('dist'));</p><br>
+<p>});</p><br>
+<p>gulp-changed</p><br>
+<p></p><br>
+<p>只允许改变的文件通过管道。</p><br>
+<p></p><br>
+<p>1</p><br>
+<p>2</p><br>
+<p>3</p><br>
+<p>4</p><br>
+<p>5</p><br>
+<p>6</p><br>
+<p>7</p><br>
+<p>8</p><br>
+<p>9</p><br>
+<p>10</p><br>
+<p>11</p><br>
+<p>12</p><br>
+<p>13</p><br>
+<p>14</p><br>
+<p>15</p><br>
+<p>var gulp = require('gulp');</p><br>
+<p>var changed = require('gulp-changed');</p><br>
+<p>var ngmin = require('gulp-ngmin'); // just as an example</p><br>
+<p>var SRC = 'src/*.js';</p><br>
+<p>var DEST = 'dist';</p><br>
+<p>gulp.task('default', function () {</p><br>
+    <p>return gulp.src(SRC)</p><br>
+        <p>.pipe(changed(DEST))</p><br>
+        <p>// ngmin will only get the files that</p><br>
+        <p>// changed since the last time it was run</p><br>
+        <p>.pipe(ngmin())</p><br>
+        <p>.pipe(gulp.dest(DEST));</p><br>
+<p>});</p><br>
+<p>gulp-bower</p><br>
+<p></p><br>
+<p>执行bower安装。</p><br>
+<p></p><br>
+<p>1</p><br>
+<p>2</p><br>
+<p>3</p><br>
+<p>4</p><br>
+<p>5</p><br>
+<p>6</p><br>
+<p>7</p><br>
+<p>var gulp = require('gulp');</p><br>
+<p>var bower = require('gulp-bower');</p><br>
+<p>gulp.task('bower', function() {</p><br>
+  <p>return bower()</p><br>
+    <p>.pipe(gulp.dest('lib/'))</p><br>
+<p>});</p><br>
+<p>gulp-if</p><br>
+<p></p><br>
+<p>有条件的执行任务</p><br>
+<p></p><br>
+<p>gulp-replace</p><br>
+<p></p><br>
+<p>字符串替换插件。</p><br>
+<p></p><br>
+<p>1</p><br>
+<p>2</p><br>
+<p>3</p><br>
+<p>4</p><br>
+<p>5</p><br>
+<p>6</p><br>
+<p>7</p><br>
+<p>var replace = require('gulp-replace');</p><br>
+<p>gulp.task('templates', function(){</p><br>
+  <p>gulp.src(['file.txt'])</p><br>
+    <p>.pipe(replace(/foo(.{3})/g, '$1foo'))</p><br>
+    <p>.pipe(gulp.dest('build/file.txt'));</p><br>
+<p>});</p><br>
+<p>gulp-shell</p><br>
+<p></p><br>
+<p>可以执行shell命令</p><br>
+<p></p><br>
+<p>gulp-exec</p><br>
+<p></p><br>
+<p>exec插件</p><br>
+<p></p><br>
+<p>gulp-install</p><br>
+<p></p><br>
+<p>安装npm和bower包， 如果它们的配置文件存在的话。</p><br>
+<p></p><br>
+<p>1</p><br>
+<p>2</p><br>
+<p>3</p><br>
+<p>4</p><br>
+<p>5</p><br>
+<p>var install = require("gulp-install");</p><br>
+<p>gulp.src(__dirname + '/templates/**')</p><br>
+  <p>.pipe(gulp.dest('./'))</p><br>
+  <p>.pipe(install());</p><br>
+<p>gulp-rename</p><br>
+<p></p><br>
+<p>改变管道中的文件名。</p><br>
+<p></p><br>
+<p>1</p><br>
+<p>2</p><br>
+<p>3</p><br>
+<p>4</p><br>
+<p>5</p><br>
+<p>6</p><br>
+<p>7</p><br>
+<p>8</p><br>
+<p>9</p><br>
+<p>10</p><br>
+<p>11</p><br>
+<p>12</p><br>
+<p>13</p><br>
+<p>14</p><br>
+<p>15</p><br>
+<p>16</p><br>
+<p>17</p><br>
+<p>18</p><br>
+<p>19</p><br>
+<p>20</p><br>
+<p>21</p><br>
+<p>22</p><br>
+<p>23</p><br>
+<p>24</p><br>
+<p>25</p><br>
+<p>26</p><br>
+<p>var rename = require("gulp-rename");</p><br>
+<p>// rename via string</p><br>
+<p>gulp.src("./src/main/text/hello.txt")</p><br>
+    <p>.pipe(rename("main/text/ciao/goodbye.md"))</p><br>
+    <p>.pipe(gulp.dest("./dist")); // ./dist/main/text/ciao/goodbye.md</p><br>
+<p>// rename via function</p><br>
+<p>gulp.src("./src/**/hello.txt")</p><br>
+    <p>.pipe(rename(function (path) {</p><br>
+        <p>path.dirname += "/ciao";</p><br>
+        <p>path.basename += "-goodbye";</p><br>
+        <p>path.extname = ".md"</p><br>
+    <p>}))</p><br>
+    <p>.pipe(gulp.dest("./dist")); // ./dist/main/text/ciao/hello-goodbye.md</p><br>
+<p>// rename via hash</p><br>
+<p>gulp.src("./src/main/text/hello.txt", { base: process.cwd() })</p><br>
+    <p>.pipe(rename({</p><br>
+        <p>dirname: "main/text/ciao",</p><br>
+        <p>basename: "aloha",</p><br>
+        <p>prefix: "bonjour-",</p><br>
+        <p>suffix: "-hola",</p><br>
+        <p>extname: ".md"</p><br>
+    <p>}))</p><br>
+    <p>.pipe(gulp.dest("./dist")); // ./dist/main/text/ciao/bonjour-aloha-hola.md</p><br>
+<p>gulp-ignore</p><br>
+<p></p><br>
+<p>忽略管道中的部分文件。</p><br>
+<p></p><br>
+<p>gulp-util</p><br>
+<p></p><br>
+<p>提供一些辅助方法。</p><br>
+<p></p><br>
+<p>gulp-clean</p><br>
+<p></p><br>
+<p>提供clean功能。</p><br>
+<p></p><br>
+<p>1</p><br>
+<p>2</p><br>
+<p>3</p><br>
+<p>4</p><br>
+<p>5</p><br>
+<p>6</p><br>
+<p>7</p><br>
+<p>var gulp = require('gulp');  </p><br>
+<p>var clean = require('gulp-clean');</p><br>
+<p>gulp.task('clean', function () {  </p><br>
+  <p>return gulp.src('build', {read: false})</p><br>
+    <p>.pipe(clean());</p><br>
+<p>});</p><br>
+<p>gulp-concat</p><br>
+<p></p><br>
+<p>连接合并文件。</p><br>
+<p></p><br>
+<p>1</p><br>
+<p>2</p><br>
+<p>3</p><br>
+<p>4</p><br>
+<p>5</p><br>
+<p>6</p><br>
+<p>7</p><br>
+<p>var concat = require('gulp-concat');</p><br>
+<p>gulp.task('scripts', function() {</p><br>
+  <p>gulp.src('./lib/*.js')</p><br>
+    <p>.pipe(concat('all.js'))</p><br>
+    <p>.pipe(gulp.dest('./dist/'))</p><br>
+<p>});</p><br>
+<p>gulp-wrap</p><br>
+<p></p><br>
+<p>将一个lodash模版包装成流内容。</p><br>
+<p></p><br>
+<p>gulp-declare</p><br>
+<p></p><br>
+<p>安全的声明命名空间，设置属性。</p><br>
+<p></p><br>
+<p>1</p><br>
+<p>2</p><br>
+<p>3</p><br>
+<p>4</p><br>
+<p>5</p><br>
+<p>6</p><br>
+<p>7</p><br>
+<p>8</p><br>
+<p>9</p><br>
+<p>10</p><br>
+<p>11</p><br>
+<p>12</p><br>
+<p>13</p><br>
+<p>var declare = require('gulp-declare');</p><br>
+<p>var concat = require('gulp-concat');</p><br>
+<p>gulp.task('models', function() {</p><br>
+  <p>// Define each model as a property of a namespace according to its filename</p><br>
+  <p>gulp.src(['client/models/*.js'])</p><br>
+    <p>.pipe(declare({</p><br>
+      <p>namespace: 'MyApp.models',</p><br>
+      <p>noRedeclare: true // Avoid duplicate declarations</p><br>
+    <p>}))</p><br>
+    <p>.pipe(concat('models.js')) // Combine into a single file</p><br>
+    <p>.pipe(gulp.dest('build/js/'));</p><br>
+<p>});</p><br>
+<p>更多的文章</p><br>
+
+</body>
+</html>

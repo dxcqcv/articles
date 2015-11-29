@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="author" content="Philipp von Weitershausen">
+    <meta name="description" content="">
+    <title>React Native for Android: How we built the first cross-platform React Native app</title>
+    <link rel="stylesheet" href="css/global.css" media="all">
+</head>
+<body>
+<a href="https://code.facebook.com/posts/1189117404435352/">the link of articles</a><br>
+
+<pre>
+Earlier this year, we introduced React Native for iOS. React Native brings what developers are used to from React on the web — declarative self-contained UI components and fast development cycles — to the mobile platform, while retaining the speed, fidelity, and feel of native applications. Today, we're happy to release React Native for Android.
+
+At Facebook we've been using React Native in production for over a year now. Almost exactly a year ago, our team set out to develop the Ads Manager app. Our goal was to create a new app to let the millions of people who advertise on Facebook manage their accounts and create new ads on the go. It ended up being not only Facebook's first fully React Native app but also the first cross-platform one. In this post, we'd like to share with you how we built this app, how React Native enabled us to move faster, and the lessons we learned.
+
+Choosing React Native
+Not long ago, React Native was still a new technology that had not been proven in production. While developing a new app based on this technology carried some risk, it was outweighed by the potential upsides.
+
+First, our initial team of three product engineers was already familiar with React. Second, the app needed to contain a lot of complex business logic to accurately handle differences in ad formats, time zones, date formats, currencies, currency conventions, and so on. Much of this was already written in JavaScript. The prospect of writing all that code in Objective-C only to later write it in Java for the Android version of the app wasn't appealing — nor would it be efficient. Third, in React Native it would be easy to implement most of the UI surfaces we wanted to build — displaying lots of data in the form of lists, tables, or graphs. Product engineers could be immediately productive implementing these views, as long as they knew React.
+
+Of course, some features presented a challenge for this new platform — for example, the image editor, which lets advertisers zoom and crop a photo, and the map view, which lets advertisers target people within a certain radius of a location. Another example is the breadcrumb navigation, which helps advertisers visualize the hierarchy of ads in their accounts. These provided opportunities for us to push the platform further.
+
+
+
+Building Ads Manager for iOS first
+Our team decided to develop an iOS version of the app first, which aligned very well with React Native also being developed first for iOS. We grew the team from three to eight engineers over the following months. The new recruits weren't familiar with React — and some of them weren't familiar with JavaScript — but they were eager to build a great mobile experience for our advertisers, and they ramped up quickly.
+
+Experienced iOS engineers on the React Native team helped us bridge features that weren't yet available in React Native, such as providing access to the phone's camera roll. They also helped us bundle the app with some of Facebook's existing iOS libraries that were already being used in other Facebook apps to perform authentication, analytics, crash reporting, networking, and push notifications. That let our team focus on building just the product.
+
+As mentioned above, we were able to reuse a lot of our pre-existing JavaScript libraries. One such library is Relay, Facebook's framework for delivering data to React applications via GraphQL. Another set of libraries dealt with internationalization and localization, which can be tricky when time zones and currencies are involved. Normally these libraries load the right configuration from a JSON endpoint on the website. We wrote scripts to export the JSON files for all supported locales, included the files with the app using iOS's localized bundles, and then exposed the JSON data to JavaScript with a few lines of native code. This allowed our libraries to work nearly unchanged.
+
+One of the bigger challenges we faced was the navigation flows. For navigating an advertiser's existing ads and campaigns, we wanted a breadcrumb navigation bar. For the ad creation flow, we needed a wizard-style navigation bar. On top of that, it was also crucial to get the transition animations and touch gestures right, otherwise the app would have felt more like a glorified mobile website than a native app.
+
+Our solution was the Navigator component, which was made available along with React Native under the CustomComponents directory. In essence, it's a React component that keeps track of a set of other React components in a stack. It can display one of these components and animate between them based on button presses or touch gestures. It also has a pluggable navigation bar component, which let us implement an iOS-like navigation bar for most regular views, breadcrumbs for navigating ads and campaigns, and a wizard-like stepper for the creation flow. The navigation bar component is notified of animation progress and can perform the necessary animation increment to match. This means all animations, both for the views and for the navigation bars, are computed in JavaScript, but tests showed that we were still able to perform them at 60 fps.
+
+
+There's only one way that navigation animations could stutter, and that's when the JavaScript thread was blocked during a big operation. When we encountered this scenario, it was almost exclusively due to processing large amounts of newly fetched data. Of course, it makes sense that when you navigate to a new view, more data has to be loaded and processed. On a sufficiently fast network, that process could easily interfere with a navigation animation still in progress. Our solution here was to explicitly delay the data processing until animations were complete, using the InteractionManager component, which also ships as part of React Native. We would first animate to a view that contained placeholders and then let Relay do the data processing, which automatically caused the necessary React components to re-render.
+
+Shipping an Android version
+When Ads Manager for iOS was close to shipping, we started looking at building an Android version of the same app. A React Native port to Android seemed like the best way to make that work. Fortunately, the React Native team was already hard at work creating just that. Naturally, we wanted to reuse as much app code as possible. Not just the business logic but also the UI code, because most of the views were largely the same, save for some styling. Of course, there were places where the Android version needed to look and feel different from the iOS version, for instance, in terms of navigation or using native UI elements for date pickers, switches, etc.
+
+
+Fortunately, the React Native packager's blacklist feature and React's abstraction mechanism helped us a lot with maximizing code reuse across the two platforms and minimizing the need for explicit platform checks. On iOS, we told the packager to ignore all files ending in .android.js. For Android development, it ignored all files ending in .ios.js. Now we could implement the same component once for Android and once for iOS, while the consuming code would be oblivious to the platform. So instead of introducing explicit if/else checks for the platform, we tried to refactor platform-specific parts of the UI into separate components that would have an Android and iOS implementation. At the time of shipping Ads Manager for Android, that approach yielded around 85 percent reuse of app code.
+
+A bigger challenge that we faced was how to manage the source code. Android and iOS codebases were managed in two different repositories at Facebook. The source code for Ads Manager for iOS lived in the iOS repository, of course, while the code for the Android version would have to live in the Android repository for various reasons. For example, much like with the iOS version, we wanted to make use of a few of Facebook's Android libraries, which lived in the Android repository. In addition, all the build tools, automation, and continuous integration for Android apps were hooked up to the Android repository. Given that the Android port of the app required refactoring existing iOS code to abstract platform-specific components into their own files, we would've essentially been constantly forking and merging two versions of the same codebase. That seemed like an unacceptable situation to us.
+
+In the end, we decided to designate the iOS repository as the source of truth, mostly because it was already there and the iOS version of the app was the most mature. We set up a cronjob that synced all JavaScript code from the iOS to the Android repository many times a day. Committing JavaScript to the Android repository was discouraged and was permitted only if it was followed up with an accompanying commit to the iOS repository. If the sync script detected a discrepancy, it filed a task for further investigation.
+
+We also made it possible for the JavaScript packager server to run Android code from the iOS repository. That way, our product developers, who touched mostly JavaScript and no native code, could develop and test their changes on both iOS and Android directly from the iOS repository. But that still required them to have built the native parts of the Android app from the Android repository, and the same for the iOS app — a huge tax when testing changes on two platforms. To speed up the flow for JavaScript-only developers, we also built a script that downloaded the appropriate native binary from our continuous integration servers. This made it unnecessary to even keep a clone of the Android repository for most developers — they could do all their JavaScript development from the source of truth in the iOS repository and iterate as fast as or faster than on Facebook's web stack.
+
+What we learned
+The React Native team developed the platform alongside our app, and exposed the native components and APIs that we needed to make it happen. Those components will benefit everyone building an app in the future. Even if we'd had to build out a few components ourselves, using React Native over pure native still would've been worth it. We would've had to write those components anyway, and they probably wouldn't have been reusable by other teams down the road.
+
+One lesson we learned was that working across separate iOS and Android code repositories is difficult, even with lots of tools and automation. When we were building the app, Facebook used this model, and all of our build automation and developer processes were set up around it. However, it doesn't work well for a product that, for the most part, has a single shared JavaScript codebase. Fortunately, Facebook is moving to a unified repository for both platforms — only one copy of common JavaScript code will be necessary, and syncs will be a thing of the past.
+
+Another lesson we learned concerned testing. When making changes, every engineer must be careful to test on both platforms, and the process is prone to human error. But that's just an inevitable consequence of developing a cross-platform app from the same codebase. That said, the cost of an occasional mishap due to insufficient testing is far outweighed by the development efficiency gained by using React Native and being able to reuse code across both platforms in the first place. Keep in mind, this lesson does not apply only to product engineers; it also applies to the React Native platform engineers working in Objective-C and Java. Much of the work these engineers do is not purely limited to the respective native languages. It can also affect JavaScript — for example, component APIs or partially shared implementations. Native iOS engineers are typically not used to having to test changes on Android, and the reverse is true of Android engineers. This is mainly a cultural gap that took time and effort to close, and as a result, over time, our stability has increased.
+
+We also addressed the problem by building integration tests that would run on every revision. While this worked out of the box for catching iOS issues on iOS and likewise for Android, our continuous integration systems were not set up to run Android tests on iOS revisions and vice versa. This took engineering effort to solve, and there's still a large enough margin of error to occasionally break the app.
+
+When all was said and done, our bet paid off — we were able to ship Facebook's first fully React Native app on two platforms, with native look and feel, built by the same team of JavaScript engineers. Not all of the engineers were familiar with React when they joined the team, yet they built an iOS app with native look and feel in just five months. And after an additional three months, we released the Android version of the app.
+
+</pre>
+</body>
+</html>

@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="author" content="Murphywuwu">
+    <meta name="description" content="">
+    <title>CSS:关于元素高度与宽度的讨论 系列文章(三)</title>
+    <link rel="stylesheet" href="css/global.css" media="all">
+</head>
+<body>
+<a href="http://segmentfault.com/a/1190000003771391?utm_source=Weibo">the link of articles</a><br>
+
+<p>前言</p><br>
+<p></p><br>
+<p>在CSS:关于元素高度与宽度的讨论 系列文章（一）中讨论了display为display：block的非置换元素的宽度与高度在不同情况下的表现,但是有些地方并不严谨,因此在这里做一个补充，在补充前先简单介绍一下css盒模型以及其在可视化格式模型布局中盒子被管理的几个要点。在CSS:关于元素高度与宽度的讨论 系列文章（二）中介绍了块级元素、块元素、行内级元素、行内元素、置换元素、非置换元素,同样的在这篇文章中将介绍两种盒概念,containing box(包含块)以及block container box(块容器盒)</p><br>
+<p></p><br>
+<p>The CSS box model describes the rectangular boxes that are generated for elements in the document tree and laid out according to the visual formatting model.</p><br>
+<p>css盒模型描述了在文档树里生成并且根据可视化格式模型进行渲染布局的矩形框们。</p><br>
+<p>In the visual formatting model, each element in the document tree generates zero or more </p><br>
+<p>boxes according to the box model. The layout of these boxes is governed by:</p><br>
+<p></p><br>
+<p>box dimensions and type.</p><br>
+<p>positioning scheme (normal flow, float, and absolute positioning).</p><br>
+<p>relationships between elements in the document tree.</p><br>
+<p>external information (e.g., viewport size, intrinsic dimensions of images, etc.).</p><br>
+<p>在可视化格式模型中,每个元素在文档树里根据盒模型生成0或多个盒子。这些盒的布局被以下要素所管理</p><br>
+<p></p><br>
+<p>盒子的尺寸和类型</p><br>
+<p>定位方案(普通流,浮动,绝对定位)</p><br>
+<p>文档树中元素之间的关系</p><br>
+<p>外部信息(例如，视口大小，图像的内在尺寸等)</p><br>
+<p>视口(viewport):视口，即可视窗口。当可视窗口的尺寸大小改变时，浏览器应该改变文档的布局。 比如，有些值依赖于可视窗口的大小，DIV 'width' 的 "auto" 值，等等。当可视窗口的尺寸小于文档渲染的画布（也就是页面）的大小时，浏览器应该提供滚动机制。 每个画布最多有一个可视窗口。但是，浏览器可以同时渲染多个画布。</p><br>
+<p>因此下面我们要谈的便是关于盒子的尺寸问题。</p><br>
+<p></p><br>
+<p>containing block(包含块)</p><br>
+<p></p><br>
+<p>概述</p><br>
+<p></p><br>
+<p>In CSS 2.1, many box positions and sizes are calculated with respect to the edges of >a rectangular box called a containing block.In general, generated boxes act as >containing blocks for descendant boxes; we say that a box "establishes" the >containing block for its descendants. The phrase "a box's containing block" means >"the containing >block in which the box lives," not the one it generates.</p><br>
+<p></p><br>
+<p>Each box is given a position with respect to its containing block, but it is not >confined by this containing block; it may overflow.</p><br>
+<p>在CSS2.1中,一个包含块的位置和尺寸相对于矩形框的边缘记进行计算。通常,生成的框为它的后代盒子充当包含块;我们认为,一个盒子(框)为他的后代建立了包含块。当我们在说“一个框(盒)的包含块”的意思是“该框所处的包含块”，而不是说它自身产生的包含块。</p><br>
+<p></p><br>
+<p>每个盒子相对于它的包含块进行定位,但并不限于它的包含块内;它有可能会溢出。</p><br>
+<p></p><br>
+<p>定义</p><br>
+<p></p><br>
+<p>元素的包含块定义如下</p><br>
+<p></p><br>
+<p>The containing block in which the root element lives is a rectangle called the initial containing block. For continuous media, it has the dimensions of the viewport and is anchored at the canvas origin; it is the page area for paged media. The 'direction' property of the initial containing block is the same as for the root element.</p><br>
+<p>根元素所在的包含块为一个称为初始包含块的矩形框(根元素存在于initial containing block内),在我们常用的浏览器环境下，指的是原点与 canvas 重合，大小和 viewport 相同的矩形。</p><br>
+<p>For other elements, if the element's position is 'relative' or 'static', the containing block is formed by the content edge of the nearest block container ancestor box.</p><br>
+<p>对于其他元素,如果元素的position属性值为relative或者static(元素在文档流中),其包含块为祖先元素中最近的 block container box(块容器盒) 的 content box (除 margin, border, padding 外的区域)；</p><br>
+<p>If the element has 'position: fixed', the containing block is established by the viewport in the case of continuous media or the page area in the case of paged media.</p><br>
+<p>如果元素的position值为fixed,包含块由视口viewport建立</p><br>
+<p>If the element has 'position: absolute', the containing block is established by the nearest ancestor with a 'position' of 'absolute', 'relative' or 'fixed', in the following way:</p><br>
+<p></p><br>
+<p>1.In the case that the ancestor is an inline element, the containing block is the bounding box around the padding boxes of the first and the last inline boxes generated for that element. In CSS 2.1, if the inline element is split across multiple lines, the containing block is undefined.</p><br>
+<p>2.Otherwise, the containing block is formed by the padding edge of the ancestor</p><br>
+<p>If there is no such ancestor, the containing block is the initial containing block.</p><br>
+<p>如果元素的position值为absolute,则它的包含块由最近的position的值为</p><br>
+<p>absolute,relative,fixed的祖先元素(offset parent)所建立,如下列方式</p><br>
+<p>1.如果祖先是行内元素,则containing block为能够包含祖先元素生成的第一个和最后一个 inline boxs 的 padding boxs (除 margin, border 外的区域) 的最小矩形；</p><br>
+<p>2.否则,则由这个祖先元素的padding boxs形成</p><br>
+<p></p><br>
+<p>如果没有这样的祖先元素,则包含块为初始包含块</p><br>
+<p></p><br>
+<p>block container box(块容器盒)</p><br>
+<p></p><br>
+<p>Except for table boxes, which are described in a later chapter, and replaced elements, a block-level box is also a block container box. A block container box either contains only block-level boxes or establishes an inline formatting context and thus contains only inline-level boxes. Not all block container boxes are block-level boxes: non-replaced inline blocks and non-replaced table cells are block containers but not block-level boxes. Block-level boxes that are also block containers are called block boxes.</p><br>
+<p>除了table boxs以及置换元素,一个块级盒子也是一个块容器盒(block container box)。一个块容器盒要么只包含块级盒子,要么在盒内建立IFC只包含行内级盒子。也并不是所有的块容器盒都是块级盒子：非置换行内块(inline-block)和非置换单元格(table-cell)同样也是块容器,但它们并不是块级盒子。块级盒子是被叫做块盒的块容器</p><br>
+<p>栗子</p><br>
+<p></p><br>
+<p>根据上面对containing box的介绍,我们可以把包含块当成一个大箱子,箱子里要摆很多小盒子，小盒子怎么摆取决于大箱子。不同的小盒子在它的大箱子里的初始位置是不一样的,下面举个简单的栗子来说明一下</p><br>
+<p></p><br>
+ <p><div id="wrap"></p><br>
+        <p><div id="inner"></div></p><br>
+ <p></div></p><br>
+<p> </p><br>
+<p>CSS</p><br>
+<p></p><br>
+<p> </p><br>
+ <p>#wrap {</p><br>
+    <p>width: 100px;</p><br>
+    <p>height: 100px;</p><br>
+    <p>padding: 10px;</p><br>
+    <p>border: 2px dashed #333;</p><br>
+    <p>background: orange;</p><br>
+<p>}</p><br>
+<p>#inner {</p><br>
+    <p>width: 30px;</p><br>
+    <p>height: 30px;</p><br>
+    <p>background: #ccc;</p><br>
+<p></p><br>
+<img src="img/csswh.cwh01.png" alt="" />
+<p>原图</p><br>
+<img src="img/csswh.cwh02.png" alt="" />
+<p></p><br>
+<p></p><br>
+<p>理解一：通过此图可以知道inner盒子在position为默认的是static时,它的包含块为最近的祖先元素的content-box,所以他的起始位置位于从wrap的content-box的左上角</p><br>
+<p></p><br>
+<img src="img/csswh.cwh03.png" alt="" />
+<p></p><br>
+<p>理解二：当把inner的position值设为absolute,并设top:0,left:0时,同时把wrap的值设为relative时,inner的包含块为他的off-set parent的padding-box,因此inner定位的原点为wrap的padding-box的左上角。</p><br>
+<p></p><br>
+<p>思考:通过上述例子我们可以更直观的感受到,对于不同的元素它的containing-box是不一样的,同样的对于高度与宽度的继承时的计算,因为containing-box的不一样,计算时也会出现差异的,在我的上两篇文章中,都笼统的说成是xxx的宽或高度等于xxx的父或子的内容的宽度,因此这样的说法是不严谨的,有两点1.因为举得例子中的祖先元素只包含content-box,而不一样的元素的containing-box是不一样的,有的是其某祖先元素的padding-box有的是其祖先元素的content-box因此2.且我认为对于一个元素高度与宽度的继承应该是说继承这个元素所处的containing-box的值的一些计算,而不是单纯的认为是其父元素,因为它的父元素的有可能并不是它的包含块或者说它所处的包含块只是他父元素的一部分，所以下面将对于之前写的文章作出一些补充。</p><br>
+<p>注：第一篇文章的内容大体来说是正确的,因此可以先理解完第一篇文章,再来看这篇文章会更好,这边文章的目的也算是对于前两章不足的内容的补充,如有错误,欢迎指正,(^__^) 。</p><br>
+<p></p><br>
+<p>关于元素高度与宽度的补充</p><br>
+<p></p><br>
+<p>下面所举得例子,html的结构就如上例子,下面就不写出html结构了。</p><br>
+<p>元素在文档流中指的就是position的值为static或者relative</p><br>
+<p></p><br>
+<p>元素宽高度为100%</p><br>
+<p></p><br>
+<p>1.元素在文档流中或者元素为浮动元素</p><br>
+<p></p><br>
+ <p>#wrap {</p><br>
+    <p>width: 100px;</p><br>
+    <p>height: 40px;</p><br>
+    <p>padding: 10px;</p><br>
+    <p>border: 2px dashed #333;</p><br>
+    <p>margin: 10px;</p><br>
+    <p>background: orange;</p><br>
+<p>}</p><br>
+<p>#inner {</p><br>
+    <p>width: 100%;</p><br>
+    <p>height: 100%;</p><br>
+    <p>background: #ccc;</p><br>
+<p>}</p><br>
+<p></p><br>
+<p>加上float等于left或者right时，效果与上图相同</p><br>
+<img src="img/csswh.cwh04.png" alt="" />
+<p></p><br>
+<p>结论1：当元素在文档流中或者为浮动元素时,元素的宽高度为其祖先元素中最近的 block container box(块容器盒)的content box,也就是继承它的包含块的宽高度。例子如下</p><br>
+<p>html</p><br>
+<p></p><br>
+<p><div class="wrap"></p><br>
+    <p><div class="wrap-inner"></div></p><br>
+<p></div></p><br>
+<p>css</p><br>
+<p></p><br>
+<p>body {</p><br>
+    <p>margin: 0;</p><br>
+<p>}</p><br>
+<p>.wrap {</p><br>
+    <p>width: 800px;</p><br>
+    <p>padding: 10px;</p><br>
+    <p>border: 5px solid #fdf;</p><br>
+    <p>background: #1de;</p><br>
+<p>}</p><br>
+<p>.wrap-inner {</p><br>
+    <p>height: 100px;</p><br>
+    <p>width: 100%;</p><br>
+    <p>background: #ead;</p><br>
+    <p>margin: 0 210px;</p><br>
+<p>}</p><br>
+<p>效果如下</p><br>
+<p></p><br>
+<p>wrap-inner的width=800*100%=800。</p><br>
+<img src="img/csswh.cwh05.png" alt="" />
+<p></p><br>
+<p>2.元素的position值为absolute</p><br>
+<p></p><br>
+<p>在上述css中的inner上加上position:absolute,在wrap上加上position:relative,效果如下</p><br>
+<img src="img/csswh.cwh06.png" alt="" />
+<p></p><br>
+<p>因为inner并未设置它的定位值,故其位置显示如图,若设定位值也是相对于offset parent的padding-box进行定位,可看上面的理解一二。</p><br>
+<p></p><br>
+<p>结论2:当元素的position的值为absolute时,元素的宽高度为其其祖先元素中最近的offset parent的padding box,也就是继承它的包含块的宽高度 。</p><br>
+<p></p><br>
+<p>3.元素的position值为fixed</p><br>
+<p></p><br>
+<p>在上述css中的inner上加上position:fixed;</p><br>
+<img src="img/csswh.cwh07.png" alt="" />
+<p></p><br>
+<p>因为inner并未设置它的定位值,故其位置显示如图。</p><br>
+<p></p><br>
+<p>结论3:当元素的position的值为fixed时,元素的宽高度为其包含块viewport的宽高度。</p><br>
+<p></p><br>
+<p>元素不设宽度</p><br>
+<p></p><br>
+<p>1.元素在文档流中</p><br>
+<p></p><br>
+<p>#wrap {</p><br>
+    <p>width: 100px;</p><br>
+    <p>height: 40px;</p><br>
+    <p>padding: 10px;</p><br>
+    <p>border: 2px dashed #333;</p><br>
+    <p>margin: 10px;</p><br>
+    <p>background: orange;</p><br>
+<p>}</p><br>
+<p>#inner {</p><br>
+    <p>height: 10px;</p><br>
+    <p>background: #ccc;</p><br>
+<p>}</p><br>
+<p></p><br>
+<img src="img/csswh.cwh08.png" alt="" />
+<p>结论1：当元素在文档流时,元素的border-box宽度加上其margin-left和margin-right的值为其祖先元素中最近的 block container box(块容器盒)的content box的宽度,也就是继承它的包含块的宽度。公式为'margin-left' + 'border-left-width' + 'padding-left' + 'width' + 'padding-right' + 'border-right-width' + 'margin-right' = width of containing block。看下例。</p><br>
+<p></p><br>
+<p>html</p><br>
+<p></p><br>
+<p><div class="wrap"></p><br>
+    <p><div class="wrap-inner"></div></p><br>
+<p></div></p><br>
+<p>css</p><br>
+<p></p><br>
+<p>body {</p><br>
+    <p>margin: 0;</p><br>
+<p>}</p><br>
+<p>.wrap {</p><br>
+    <p>width: 800px;</p><br>
+    <p>padding: 10px;</p><br>
+    <p>border: 5px solid #fdf;</p><br>
+    <p>background: #1de;</p><br>
+<p>}</p><br>
+<p>.wrap-inner {</p><br>
+    <p>height: 100px;</p><br>
+    <p>background: #ead;</p><br>
+    <p>margin: 0 210px;</p><br>
+<p>}</p><br>
+<p>效果如下</p><br>
+<p></p><br>
+<img src="img/csswh.cwh10.png" alt="" />
+<p>380+210*2=800，同上公式。注意对比与上面width=100%例子的区别。</p><br>
+<p></p><br>
+<p>2.元素不在文档流中</p><br>
+<p></p><br>
+<p>结论2：如文章一中的结论一样,元素宽度等于其内容所占空间,同样的在文章一中,也得出了元素不设高度,元素的高度为其内容所占据空间,若没有内容,则高度为0。</p><br>
+<p></p><br>
+<p>思考:那么由此我们可以引发我们的又一思考,在高度或者宽度由内容决定的情况下,当元素的子代的position scheme不同的情况下,元素的宽高度又是如何变化的？</p><br>
+<p>元素宽度或高度由内容决定</p><br>
+<p>接下来我就不举栗子了,直接给出结论</p><br>
+<p></p><br>
+<p>1.高度宽度都由内容决定</p><br>
+<p></p><br>
+<p>元素不设宽度且元素不在文档流中，元素宽度为内容宽度</p><br>
+<p>元素不设高度，元素高度等于内容高度</p><br>
+<p></p><br>
+<p>元素不在文档流中</p><br>
+<p></p><br>
+<p>当子元素都为普通流中元素时,元素宽度为子元素中宽度最大的元素，高度为子元素高度之和（子元素单个计算：子元素高度 +　子元素padding + 子元素border + 子元素margin）</p><br>
+<p>当子元素都为浮动元素时,元素宽度为子元素宽度之和，高度为子元素中高度最大的元素</p><br>
+<p>当子元素都为绝对定位或者固定定位元素时，元素宽度和高度都为0</p><br>
+<p>2.只有高度由内容决定</p><br>
+<p></p><br>
+<p>元素不设宽度且元素在文档流中，元素宽度为其祖先元素中最近的 block container box(块容器盒) 的 content box</p><br>
+<p>元素不设高度，元素高度等于内容高度</p><br>
+<p></p><br>
+<p>元素在文档流中</p><br>
+<p></p><br>
+<p>当子元素都为普通流中元素，高度为子元素高度之和(子元素单个计算：子元素高度＋子元素padding+子元素border)(边距折叠)</p><br>
+<p>当子元素不在文档流中，元素高度为0</p><br>
+<p>总结</p><br>
+<p></p><br>
+<p>1.当元素继承其祖先元素的宽高度时,元素的宽高度等于containing-box的高宽度</p><br>
+<p>2.当元素的宽度或者高度等于其内容的宽度或者高度时,如上得出的结论</p><br>
+
+</body>
+</html>
