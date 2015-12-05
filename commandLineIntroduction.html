@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="author" content="Kezz Bracey">
+    <meta name="description" content="">
+    <title>The Command Line for Web Design: Introduction</title>
+    <link rel="stylesheet" href="css/global.css" media="all">
+</head>
+<body>
+<a href="http://webdesign.tutsplus.com/articles/the-command-line-for-web-design-introduction--cms-23493">the link of articles</a><br>
+
+<pre>
+For a long while working with the command line was considered to be outside the realm of web designers. It was used pretty much exclusively for things like server admin and file management and all kinds of things that have nothing to do with the average web designer’s day to day processes.
+
+That may have been the case in the past, but today it couldn’t be further from the truth.
+
+Nowadays, there are thousands of incredible command line powered tools available specifically for front end languages and workflows. The huge benefits they offer mean leveraging the command line is becoming an ever more essential skill for web designers.
+some familiar command line tools
+Some oft-used command line tools
+
+I’ll admit, for some time after I first encountered these kinds of web design tools I was a bit “command line phobic.” I was influenced by the “for programmers not designers” idea, and I’d always looked for other options instead of giving the command line a try.
+
+Then, finally, I made the plunge when a project I really wanted to use unavoidably required interaction via the command line. I was a little intimidated initially, but to my very pleasant surprise I quickly found myself exclaiming: 
+
+    “This is awesome, I don’t know why I didn’t start learning this ages ago!”
+
+Today, I use the command line in almost every web design project and I wouldn’t be without it. It’s incredibly useful in almost every stage of a typical web design process.
+About This Series
+
+But here’s the thing, even now I wouldn’t be able to do most of the things you’ll find in a typical “getting started with command line” tutorial if my life depended on it. If you never learn how to mkdir or cd or ls it doesn’t matter. The truth is, as a web designer you really don’t need any of that stuff. The only command line skills you need are those which directly facilitate making your web design projects more efficient.
+
+That’s why this series isn’t about “how to run obscure commands for tasks you never do.” Nor is it a “complicated dev process made easy for designers” type of a deal. This is a series specifically for web designers, showing you how to utilize tools that are incredibly useful specifically for web design projects.
+
+Once you start bringing the command line into your design processes it’ll open up a whole new world of options, save huge swathes of your precious time, and, I promise, you’ll never look back.
+Why Command Line is Great for Web Design
+
+Across this series of tutorials you’ll learn command line driven processes that might just change the way you approach web design permanently.
+
+After getting you started with the basics we’ll jump straight into practical skills you can use right away. When you take a look at each of the topics we’ll be covering, you’ll begin to see a picture forming of why command line is such a must-have tool for web design.
+The Main Topics Covered
+
+Let’s quickly run through the topics we’ll cover during this series. There are five main subject areas:
+1. Taming 3rd Party Packages
+
+Web designers often use third party packages like jQuery, Bootstrap, Modernizr, Font Awesome, Normalize.css and a long list of others. Before the command line, utilizing these external packages normally meant:
+
+    Maintaining a list of site bookmarks where you could download the latest version of each package.
+    Manually visiting said websites to download packages every time you needed them.
+    Repeating the process all over again whenever a package was updated.
+    Manually transferring the updated version into every project it was used in.
+
+Dealing with package management manually is slow and unwieldy, but with the command line that’s a thing of the past.
+
+You can pull packages directly into your projects just by typing a few words, like:
+
+ bower install jquery
+
+You can keep packages up to date by typing a simple set of words like:
+
+ bower update jquery
+
+No more manually downloading packages from the web or manually upgrading them when they’re changed, and that’s just a small taste of the things you can do through command line package management.
+2. Powering Up Front End Code
+
+The three languages you’re most likely to see used in any web design project are CSS, HTML and JavaScript. Command line tools open up new ways to make our production and delivery of code in these languages more efficient and powerful.
+
+One of the most powerful things we can utilize command line for with CSS is to compile preprocessors, like Stylus, Sass / SCSS and LESS. With the command line you can quickly compile any preprocessor file by typing a few words. You can also set up automatic compilation so your CSS files are recompiled whenever you change your preprocessor files.
+
+Through the command line we can also further enhance our CSS workflows with things like autoprefixing, file cleaning and compressing. In a similar fashion we can also optimize our JavaScript with file concatenation and minification.
+
+And for HTML, we get access to languages like Jade which gives us both the ability to write HTML in shorthand, and the ability to develop simple yet sophisticated templating systems to prevent us having to rewrite chunks of code that repeat throughout projects.
+3. Automation with Task Runners
+
+Being able to compile to CSS with a few words, then minify JavaScript with another few words is great. But when things really start to get super-powered is when you can do everything your project needs all at once with a single command.
+
+By using something called a “task runner”, a single word command like gulp or grunt can be set to compile your preprocessor files then combine, autoprefix, clean and compress the resulting CSS, after which your Jade files are compiled into HTML, and your JS files concatenated and minified–all in the space of a few seconds.
+
+You can also setup task runners to handle these things hands-free for you. After running a command like gulp watch or grunt watch you can just go ahead and work on your project’s raw files while, in the background, all the compilation and optimization is handled for you automatically.
+
+Task runners are completely flexible and can be configured however you want, so there is no end to the ways in which you can set your projects up. Simply fine tune things to suit each set of circumstances as needed.
+4. Live Reloading, Browser Syncing & Multi Device Testing
+
+Live reloading lets you take your finger off that refresh button and concentrate on getting smooth, real time feedback on your design changes as you make them.
+
+After you have automation with task runners in place, you can add live reload straight into the mix, meshing it in whatever configuration you’ve created for your projects. You can decide exactly what triggers live reload, be it preprocessor compilation, html changes or anything you please.
+
+As part of enabling live reloading you’ll also get a site preview spun up on a localhost, i.e. a simulation of a web host running on your local machine. This is great for making sure everything works as expected over http:// protocols, as opposed to file:// protocols.
+
+On top of this you’ll also learn to get browser synchronization going, whereby you get one URL you can punch into multiple browsers and have them all synchronize together. For example, click a nav button on Chrome then see how Firefox, Opera and Safari respond to that same action simultaneously.
+
+This browser synchronization isn’t limited to one device either. You can also go to the same URL on your tablet, phone and any other device on the same connection and have every one display a synchronized preview. This all comes together to give you the perfect setup for both cross browser and cross device testing.
+
+And because you’re building this on top of your task runner setup, it all goes live with a two word command like grunt start or gulp start.
+Advertisement
+5. Scaffolding New Projects
+
+Scaffolding out new projects manually can be kind of a pain. Getting your entire folder and file structure setup and all the files connected and configured to work together can be very time consuming.
+
+By using the command line, however, you can scaffold out all kinds of projects in seconds, perfect for when you want to employ popular third party frameworks and starter code like Foundation, Bootstrap, HTML5 Boilerplate and Google Web Starter Kit.
+
+With the methods we’ll be covering, your newly scaffolded projects will have not only all the code they need, but their task runners preconfigured so things like automatic compilation and localhost previews are ready to go out of the box.
+Moving on
+
+Right then, if you’re ready I’ll see you in the first tutorial!
+</pre>
+</body>
+</html>
