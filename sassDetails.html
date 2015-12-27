@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="author" content="pinggod">
+    <meta name="description" content="">
+    <title>Sass 入门基础</title>
+    <link rel="stylesheet" href="css/global.css" media="all">
+</head>
+<body>
+<a href="https://github.com/pinggod/blog-archive/issues/4">the link of articles</a><br>
+
+<p>我有一个梦想，再也不用编写重复的代码。</p><br>
+<p></p><br>
+<p>CSS 是一门声明式语言，基本上没有逻辑结构可言。Sass 等预处理器最大的优势，就在于为 CSS 添加了逻辑结构和其他语法糖，让其具有了复用、可读、可扩、可维护等优雅的特性。这也是最吸引我使用它们的原因。</p><br>
+<p></p><br>
+<p>目前，我最喜欢的是 Sass，主要原因是相关资源比较丰富、更新及时、社区活跃。其他预处理器都各有优势，根据个人习惯选用即可。</p><br>
+<p></p><br>
+<p>本文是关于 Sass 的入门基础教程，但不是教你怎么来用 Sass 写嵌套语法的。为什么这么说？因为许多初学者浅尝辄止，了解了 Sass 十分之一的表面就不再愿意进一步深入了，远远达不到及格线。</p><br>
+<p></p><br>
+<p>懒惰在计算机世界是一种美德，前提是你要有偷懒的资本。Sass 的强大可以让你在 CSS 的各个方面都有偷懒的资本。</p><br>
+<p></p><br>
+<p>编码</p><br>
+<p></p><br>
+<p>编码声明，应该置于入口文件的第一行，有助于解决字符集相关的各种灵异问题。</p><br>
+<p></p><br>
+<p>@charset “utf-8”;</p><br>
+<p>嵌套</p><br>
+<p></p><br>
+<p>Sass 支持在规则集内嵌套其他规则集。</p><br>
+<p></p><br>
+<p>body {</p><br>
+  <p>width: 97%;</p><br>
+  <p>p, div {</p><br>
+    <p>font-size: 2em;</p><br>
+    <p>a { font-weight: bold; }</p><br>
+  <p>}</p><br>
+  <p>pre { font-size: 3em; }</p><br>
+<p>}</p><br>
+<p>生成的 CSS：</p><br>
+<p></p><br>
+<p>body {</p><br>
+  <p>width: 97%;</p><br>
+<p>}</p><br>
+<p>body p, body div {</p><br>
+  <p>font-size: 2em;</p><br>
+<p>}</p><br>
+<p>body p a, body div a {</p><br>
+  <p>font-weight: bold;</p><br>
+<p>}</p><br>
+<p>body pre {</p><br>
+  <p>font-size: 3em;</p><br>
+<p>}</p><br>
+<p>父级引用符：&</p><br>
+<p></p><br>
+<p>父级引用符 &，更像是一个默认值为父级选择器的插值符号。</p><br>
+<p></p><br>
+<p>#main {</p><br>
+  <p>color: black;</p><br>
+  <p>a {</p><br>
+    <p>font-weight: bold;</p><br>
+    <p>&:hover { color: red; }</p><br>
+  <p>}</p><br>
+<p>}</p><br>
+<p>生成的 CSS：</p><br>
+<p></p><br>
+<p>#main {</p><br>
+  <p>color: black;</p><br>
+<p>}</p><br>
+<p>#main a {</p><br>
+  <p>font-weight: bold;</p><br>
+<p>}</p><br>
+<p>#main a:hover {</p><br>
+  <p>color: red;</p><br>
+<p>}</p><br>
+<p>如果父级元素未定义，是否可以提供一些预备措施？当然！</p><br>
+<p></p><br>
+<p>@mixin does-parent-exist {</p><br>
+  <p>@if & {</p><br>
+    <p>&:hover {</p><br>
+      <p>color: red;</p><br>
+    <p>}</p><br>
+  <p>} @else {</p><br>
+    <p>a {</p><br>
+      <p>color: red;</p><br>
+    <p>}</p><br>
+  <p>}</p><br>
+<p>}</p><br>
+<p></p><br>
+<p>@include does-parent-exist();</p><br>
+<p>生成的 CSS：</p><br>
+<p></p><br>
+<p>a { </p><br>
+  <p>color: red; </p><br>
+<p>}</p><br>
+<p>嵌套型属性</p><br>
+<p></p><br>
+<p>对于复合属性，Sass 支持一种嵌套型的写法：</p><br>
+<p></p><br>
+<p>.funky {</p><br>
+  <p>font: 20px/24px fantasy {</p><br>
+    <p>weight: bold;</p><br>
+  <p>}</p><br>
+<p>}</p><br>
+<p>生成的 CSS：</p><br>
+<p></p><br>
+<p>.funky {</p><br>
+  <p>font: 20px/24px fantasy;</p><br>
+  <p>font-weight: bold;</p><br>
+<p>}</p><br>
+<p>变量</p><br>
+<p></p><br>
+<p>Sass 的强大之处就在于其具有完整的逻辑操作方案。其中最基础的，就是声明和赋值变量：</p><br>
+<p></p><br>
+<p>$font-size: 2em;</p><br>
+<p></p><br>
+<p>h1 {</p><br>
+    <p>font-size: $font-size;</p><br>
+<p>}</p><br>
+<p>由于历史原因，变量中间的连字符和下划线可以互换，即 - 等同于 _。</p><br>
+<p>数据类型</p><br>
+<p></p><br>
+<p>Sass 包含了七种数据类型：</p><br>
+<p></p><br>
+<p>数值</p><br>
+<p>字符串</p><br>
+<p>颜色值</p><br>
+<p>布尔值</p><br>
+<p>null 类型</p><br>
+<p>列表</p><br>
+<p>映射（map）</p><br>
+<p>字符串</p><br>
+<p></p><br>
+<p>Sass 中包含两种字符串：使用引号包裹的字符串和不包裹的字符串，比如 "Lucida Grande" 和 bold。当使用插值语法（#{}）时，被引用的字符串将会自动去除引号。</p><br>
+<p></p><br>
+<p>@mixin firefox-message($selector) {</p><br>
+  <p>body.firefox #{$selector}:before {</p><br>
+    <p>content: "Hi, Firefox users!";</p><br>
+  <p>}</p><br>
+<p>}</p><br>
+<p></p><br>
+<p>@include firefox-message(".header");</p><br>
+<p>生成的 CSS：</p><br>
+<p></p><br>
+<p>body.firefox .header:before {</p><br>
+  <p>content: "Hi, Firefox users!"; </p><br>
+<p>}</p><br>
+<p>操作符</p><br>
+<p></p><br>
+<p>每种数据类型都支持等号（==）和不等号（!=）运算符。</p><br>
+<p></p><br>
+<p>数值运算</p><br>
+<p></p><br>
+<p>数值还包括加减乘除以及模运算符。其中，除法运算符比较特殊：</p><br>
+<p></p><br>
+<p>// Input：SCSS</p><br>
+<p>p {</p><br>
+  <p>font: 10px/8px;             // Plain CSS, no division</p><br>
+  <p>$width: 1000px;</p><br>
+  <p>width: $width/2;            // Uses a variable, does division</p><br>
+  <p>width: round(1.5)/2;        // Uses a function, does division</p><br>
+  <p>height: (500px/2);          // Uses parentheses, does division</p><br>
+  <p>margin-left: 5px + 8px/2px; // Uses +, does division</p><br>
+<p>}</p><br>
+<p>生成的 CSS：</p><br>
+<p></p><br>
+<p>p {</p><br>
+  <p>font: 10px/8px;</p><br>
+  <p>width: 500px;</p><br>
+  <p>height: 250px;</p><br>
+  <p>margin-left: 9px; }</p><br>
+<p>由于 Sass 中没有转义字符，所以，想要原生输出反斜线，可以使用插值语法：</p><br>
+<p></p><br>
+<p>p {</p><br>
+  <p>$font-size: 12px;</p><br>
+  <p>$line-height: 30px;</p><br>
+  <p>font: #{$font-size}/#{$line-height};</p><br>
+<p>}</p><br>
+<p>生成的 CSS：</p><br>
+<p></p><br>
+<p>p {</p><br>
+  <p>font: 12px/30px; </p><br>
+<p>}</p><br>
+<p>颜色值运算符</p><br>
+<p></p><br>
+<p>是的，颜色值可以进行运算！对于 rgba 和 hsla 颜色值，必须保证透明度相同才能进行运算。</p><br>
+<p></p><br>
+<p>p {</p><br>
+  <p>color: rgba(255, 0, 0, 0.75) + rgba(0, 255, 0, 0.75);</p><br>
+<p>}</p><br>
+<p>生成的 CSS：</p><br>
+<p></p><br>
+<p>p {</p><br>
+  <p>color: rgba(255, 255, 0, 0.75); </p><br>
+<p>}</p><br>
+<p>可以通过 opacify 和 transparentize 函数调节透明度：</p><br>
+<p></p><br>
+<p>$translucent-red: rgba(255, 0, 0, 0.5);</p><br>
+<p>p {</p><br>
+  <p>color: opacify($translucent-red, 0.3);</p><br>
+  <p>background-color: transparentize($translucent-red, 0.25);</p><br>
+<p>}</p><br>
+<p>生成的 CSS：</p><br>
+<p></p><br>
+<p>p {</p><br>
+  <p>color: rgba(255, 0, 0, 0.8);</p><br>
+  <p>background-color: rgba(255, 0, 0, 0.25); </p><br>
+<p>}</p><br>
+<p>字符串操作符</p><br>
+<p></p><br>
+<p>字符串的加法操作是个很神奇的运算：当第一个运算子被引号包裹时，那么结果就会被引号包裹；如果第一个预算子未被包裹，那么结果也不会被引号包裹。</p><br>
+<p></p><br>
+<p>p:before {</p><br>
+  <p>content: "Foo " + Bar;</p><br>
+  <p>font-family: sans- + "serif";</p><br>
+<p>}</p><br>
+<p>生成的 CSS：</p><br>
+<p></p><br>
+<p>p:before {</p><br>
+  <p>content: "Foo Bar";</p><br>
+  <p>font-family: sans-serif; }</p><br>
+<p>另外一个神奇的特性是在字符串中使用插值语句，实现动态赋值：</p><br>
+<p></p><br>
+<p>p:before {</p><br>
+  <p>content: "I ate #{5 + 10} pies!";</p><br>
+<p>}</p><br>
+<p>生成的 CSS：</p><br>
+<p></p><br>
+<p>p:before {</p><br>
+  <p>content: "I ate 15 pies!"; }</p><br>
+<p>空的插值：</p><br>
+<p></p><br>
+<p>$value: null;</p><br>
+<p>p:before {</p><br>
+  <p>content: "I ate #{$value} pies!";</p><br>
+<p>}</p><br>
+<p>生成的 CSS：</p><br>
+<p></p><br>
+<p>p:before {</p><br>
+  <p>content: "I ate  pies!"; }</p><br>
+<p>如果插值内容为 null 类型，只会产生一个空字符。</p><br>
+<p>布尔操作符</p><br>
+<p></p><br>
+<p>布尔值支持 and、or 和 not 操作符进行布尔值运算。</p><br>
+<p></p><br>
+<p>插值 #{}</p><br>
+<p></p><br>
+<p>通过使用插值语法，可以实现动态赋值。</p><br>
+<p></p><br>
+<p>$name: foo;</p><br>
+<p>$attr: border;</p><br>
+<p>p.#{$name} {</p><br>
+  <p>#{$attr}-color: blue;</p><br>
+<p>}</p><br>
+<p>生成的 CSS：</p><br>
+<p></p><br>
+<p>p.foo {</p><br>
+  <p>border-color: blue; </p><br>
+<p>}</p><br>
+<p>变量标识符</p><br>
+<p></p><br>
+<p>在 Sass 中，可以给变量添加两种标识符：!default 和 !global。Sass 中的变量不能只声明不定义，至少定义为 null 类型，所以，当变量被定义时，就一定会存在一个值。同时，还可以多次定义该变量，在具体的作用域中，根据最近原则使用变量值。</p><br>
+<p></p><br>
+<p>有了上面的基础知识，那么我们就可以来辨析 !default 和 !global 的差异了。拥有 !default 标识符的变量，相当于为变量设置了默认值。如果再次对该变量进行定义，那么将会忽略声明顺序，使用新的值，不再使用默认值。</p><br>
+<p></p><br>
+<p>!global，顾名思义，就是设置全局变量。对于声明在所有函数外的变量，无论是否使用该标识符，都可以被其他函数所调用，所以此时，该标识符更像是一种标志；对于声明在函数内的变量，使用该标识符之后，即可将其提升为全局变量，为所有的函数所调用。但是从另一种角度来看，是否有必要在函数内声明全局变量，还有待商榷，毕竟这种方式的可维护性和可扩展性太低。</p><br>
+<p></p><br>
+<p>!default 标志：</p><br>
+<p></p><br>
+<p>$content: "First content";</p><br>
+<p>$content: "Second content?" !default;</p><br>
+<p>$new_content: "First time reference" !default;</p><br>
+<p></p><br>
+<p>#main {</p><br>
+  <p>content: $content;</p><br>
+  <p>new-content: $new_content;</p><br>
+<p>}</p><br>
+<p>生成的 CSS：</p><br>
+<p></p><br>
+<p>#main {</p><br>
+  <p>content: "First content";</p><br>
+  <p>new-content: "First time reference"; }</p><br>
+<p>!global 标志：</p><br>
+<p></p><br>
+<p>#main {</p><br>
+  <p>$width: 5em !global;</p><br>
+  <p>width: $width;</p><br>
+<p>}</p><br>
+<p></p><br>
+<p>#sidebar {</p><br>
+  <p>width: $width;</p><br>
+<p>}</p><br>
+<p>生成的 CSS：</p><br>
+<p></p><br>
+<p>#main {</p><br>
+  <p>width: 5em;</p><br>
+<p>}</p><br>
+<p></p><br>
+<p>#sidebar {</p><br>
+  <p>width: 5em;</p><br>
+<p>}</p><br>
+<p>有一种情况例外，当变量值为 null 时，相当于未定义，所以解析器会再查找最近的定义，找到就是用，没找到就是用默认值。</p><br>
+<p></p><br>
+<p>$content: null;</p><br>
+<p>$content: "Non-null content" !default;</p><br>
+<p></p><br>
+<p>#main {</p><br>
+  <p>content: $content;</p><br>
+<p>}</p><br>
+<p>生成的 CSS：</p><br>
+<p></p><br>
+<p>#main {</p><br>
+  <p>content: "Non-null content"; </p><br>
+<p>}</p><br>
+<p>@ 指令</p><br>
+<p></p><br>
+<p>@import</p><br>
+<p></p><br>
+<p>@import 指令可以用于从外部加载文件：</p><br>
+<p></p><br>
+<p>@import "foo.scss";</p><br>
+<p>// 可以同时加载多个文件</p><br>
+<p>@import "rounded-corners", "text-shadow";</p><br>
+<p>// 可以在 url() 中使用插值</p><br>
+<p>$family: unquote("Droid+Sans");</p><br>
+<p>@import url("http://fonts.googleapis.com/css?family=#{$family}");</p><br>
+<p>不建议在嵌套结构中使用 @import，尤其是混合宏和其他指令的嵌套结构中。</p><br>
+<p></p><br>
+<p>@media</p><br>
+<p></p><br>
+<p>@media 指令和 CSS 基本类似，唯一的不同之处在于，即使该指令的内容写在了嵌套结构中，在变异之后也会被提取到外部：</p><br>
+<p></p><br>
+<p>.sidebar {</p><br>
+  <p>width: 300px;</p><br>
+  <p>@media screen and (orientation: landscape) {</p><br>
+    <p>width: 500px;</p><br>
+  <p>}</p><br>
+<p>}</p><br>
+<p>生成的 CSS：</p><br>
+<p></p><br>
+<p>.sidebar {</p><br>
+  <p>width: 300px;</p><br>
+<p>}</p><br>
+<p>@media screen and (orientation: landscape) {</p><br>
+  <p>.sidebar {</p><br>
+    <p>width: 500px;</p><br>
+  <p>}</p><br>
+<p>}</p><br>
+<p>此外，@media 指令内可以使用 SassScript 表达式（变量、函数和操作符）：</p><br>
+<p></p><br>
+<p>$media: screen;</p><br>
+<p>$feature: -webkit-min-device-pixel-ratio;</p><br>
+<p>$value: 1.5;</p><br>
+<p></p><br>
+<p>@media #{$media} and ($feature: $value) {</p><br>
+  <p>.sidebar {</p><br>
+    <p>width: 500px;</p><br>
+  <p>}</p><br>
+<p>}</p><br>
+<p>生成的 CSS：</p><br>
+<p></p><br>
+<p>@media screen and (-webkit-min-device-pixel-ratio: 1.5) {</p><br>
+  <p>.sidebar {</p><br>
+    <p>width: 500px;</p><br>
+  <p>}</p><br>
+<p>}</p><br>
+<p>@extend</p><br>
+<p></p><br>
+<p>@extend 指令可以用来继承其他规则集：</p><br>
+<p></p><br>
+<p>.error {</p><br>
+  <p>border: 1px #f00;</p><br>
+  <p>background-color: #fdd;</p><br>
+<p>}</p><br>
+<p>.seriousError {</p><br>
+  <p>@extend .error;</p><br>
+  <p>border-width: 3px;</p><br>
+<p>}</p><br>
+<p>生成的 CSS：</p><br>
+<p></p><br>
+<p>.error, .seriousError {</p><br>
+  <p>border: 1px #f00;</p><br>
+  <p>background-color: #fdd;</p><br>
+<p>}</p><br>
+<p></p><br>
+<p>.seriousError {</p><br>
+  <p>border-width: 3px;</p><br>
+<p>}</p><br>
+<p>有时候我们会见到一些匪夷所思的现象：</p><br>
+<p></p><br>
+<p>.error {</p><br>
+  <p>border: 1px #f00;</p><br>
+  <p>background-color: #fdd;</p><br>
+<p>}</p><br>
+<p>.error.intrusion {</p><br>
+  <p>background-image: url("/image/hacked.png");</p><br>
+<p>}</p><br>
+<p>.seriousError {</p><br>
+  <p>@extend .error;</p><br>
+  <p>border-width: 3px;</p><br>
+<p>}</p><br>
+<p>生成的 CSS：</p><br>
+<p></p><br>
+<p>.error, .seriousError {</p><br>
+  <p>border: 1px #f00;</p><br>
+  <p>background-color: #fdd; </p><br>
+<p>}</p><br>
+<p></p><br>
+<p>.error.intrusion, .seriousError.intrusion {</p><br>
+  <p>background-image: url("/image/hacked.png"); </p><br>
+<p>}</p><br>
+<p></p><br>
+<p>.seriousError {</p><br>
+  <p>border-width: 3px; </p><br>
+<p>}</p><br>
+<p>实际上，Sass 是这样完成继承的：所有出现继承选择器的地方（比如此处的 .error），都会添加引用该继承的选择器（比如此处的 .seriousError）。</p><br>
+<p></p><br>
+<p>下面来看一个多继承的示例：</p><br>
+<p></p><br>
+<p>.error {</p><br>
+  <p>border: 1px #f00;</p><br>
+  <p>background-color: #fdd;</p><br>
+<p>}</p><br>
+<p>.attention {</p><br>
+  <p>font-size: 3em;</p><br>
+  <p>background-color: #ff0;</p><br>
+<p>}</p><br>
+<p>.seriousError {</p><br>
+  <p>@extend .error;</p><br>
+  <p>@extend .attention;</p><br>
+  <p>border-width: 3px;</p><br>
+<p>}</p><br>
+<p>生成的 CSS：</p><br>
+<p></p><br>
+<p>.error, .seriousError {</p><br>
+  <p>border: 1px #f00;</p><br>
+  <p>background-color: #fdd; </p><br>
+<p>}</p><br>
+<p></p><br>
+<p>.attention, .seriousError {</p><br>
+  <p>font-size: 3em;</p><br>
+  <p>background-color: #ff0; </p><br>
+<p>}</p><br>
+<p></p><br>
+<p>.seriousError {</p><br>
+  <p>border-width: 3px; </p><br>
+<p>}</p><br>
+<p>由于继承没有层级的限制，所以很容易会形成链式继承，不过其继承规则不变：</p><br>
+<p></p><br>
+<p>.error {</p><br>
+  <p>border: 1px #f00;</p><br>
+  <p>background-color: #fdd;</p><br>
+<p>}</p><br>
+<p>.seriousError {</p><br>
+  <p>@extend .error;</p><br>
+  <p>border-width: 3px;</p><br>
+<p>}</p><br>
+<p>.criticalError {</p><br>
+  <p>@extend .seriousError;</p><br>
+  <p>position: fixed;</p><br>
+  <p>top: 10%;</p><br>
+  <p>bottom: 10%;</p><br>
+  <p>left: 10%;</p><br>
+  <p>right: 10%;</p><br>
+<p>}</p><br>
+<p>生成的 CSS：</p><br>
+<p></p><br>
+<p>.error, .seriousError, .criticalError {</p><br>
+  <p>border: 1px #f00;</p><br>
+  <p>background-color: #fdd; </p><br>
+<p>}</p><br>
+<p></p><br>
+<p>.seriousError, .criticalError {</p><br>
+  <p>border-width: 3px; </p><br>
+<p>}</p><br>
+<p></p><br>
+<p>.criticalError {</p><br>
+  <p>position: fixed;</p><br>
+  <p>top: 10%;</p><br>
+  <p>bottom: 10%;</p><br>
+  <p>left: 10%;</p><br>
+  <p>right: 10%; </p><br>
+<p>}</p><br>
+<p>使用 % 标识符创建的规则集，不会被解析到最终的 CSS 文件中。</p><br>
+<p></p><br>
+<p>// This ruleset won't be rendered on its own.</p><br>
+<p>#context a%extreme {</p><br>
+  <p>color: blue;</p><br>
+  <p>font-weight: bold;</p><br>
+  <p>font-size: 2em;</p><br>
+<p>}</p><br>
+<p></p><br>
+<p>.notice {</p><br>
+  <p>@extend %extreme;</p><br>
+<p>}</p><br>
+<p>生成的 CSS：</p><br>
+<p></p><br>
+<p>#context a.notice {</p><br>
+  <p>color: blue;</p><br>
+  <p>font-weight: bold;</p><br>
+  <p>font-size: 2em; </p><br>
+<p>}</p><br>
+<p>有时候因为某些原因，继承的规则集可能不存在，为了避免编译中报错，可以添加 !optional 标识符：</p><br>
+<p></p><br>
+<p>a.important {</p><br>
+  <p>@extend .notice !optional;</p><br>
+<p>}</p><br>
+<p>由于没有定义 .notice 规则集，所以这里的输出为空。</p><br>
+<p></p><br>
+<p>目前在其他指令，比如 @media 中使用 @extend 还会报错，未来可能会完善相关机制，在此之前，应该避免将 @extend 指令嵌套到其他指令中。</p><br>
+<p></p><br>
+<p>@at-root</p><br>
+<p></p><br>
+<p>@at-root 指令用于将嵌套内的规则集提取到外部：</p><br>
+<p></p><br>
+<p>.parent {</p><br>
+  <p>...</p><br>
+  <p>@at-root {</p><br>
+    <p>.child1 { ... }</p><br>
+    <p>.child2 { ... }</p><br>
+  <p>}</p><br>
+  <p>.step-child { ... }</p><br>
+<p>}</p><br>
+<p>生成的 CSS：</p><br>
+<p></p><br>
+<p>.parent { ... }</p><br>
+<p>.child1 { ... }</p><br>
+<p>.child2 { ... }</p><br>
+<p>.parent .step-child { ... }</p><br>
+<p>此外，还有 @at-root (without: ...) 和 @at-root (with: ...) 用法，主要用于移除或者添加其他指令，下面是一个移除的示例：</p><br>
+<p></p><br>
+<p>@media print {</p><br>
+  <p>.page {</p><br>
+    <p>width: 8in;</p><br>
+    <p>@at-root (without: media) {</p><br>
+      <p>color: red;</p><br>
+    <p>}</p><br>
+  <p>}</p><br>
+<p>}</p><br>
+<p>生成的 CSS：</p><br>
+<p></p><br>
+<p>@media print {</p><br>
+  <p>.page {</p><br>
+    <p>width: 8in;</p><br>
+  <p>}</p><br>
+<p>}</p><br>
+<p>.page {</p><br>
+  <p>color: red;</p><br>
+<p>}</p><br>
+<p>@debug</p><br>
+<p></p><br>
+<p>@debug 指令用于调试 SassScript 的表达式：</p><br>
+<p></p><br>
+<p>@debug 10em + 12em;</p><br>
+<p>输出结果：</p><br>
+<p></p><br>
+<p>Line 1 DEBUG: 22em</p><br>
+<p>@warn</p><br>
+<p></p><br>
+<p>@warn 指令，顾名思义，就是提醒，这种提醒可能用于纠正未知的错误，可能用于纠正不规范的错误：</p><br>
+<p></p><br>
+<p>@mixin adjust-location($x, $y) {</p><br>
+  <p>@if unitless($x) {</p><br>
+    <p>@warn "Assuming #{$x} to be in pixels";</p><br>
+    <p>$x: 1px * $x;</p><br>
+  <p>}</p><br>
+  <p>@if unitless($y) {</p><br>
+    <p>@warn "Assuming #{$y} to be in pixels";</p><br>
+    <p>$y: 1px * $y;</p><br>
+  <p>}</p><br>
+  <p>position: relative; left: $x; top: $y;</p><br>
+<p>}</p><br>
+<p>@error</p><br>
+<p></p><br>
+<p>@error 指令和 @warn 指令非常类似，唯一的区别在于，当触发 @error 时，会阻塞编译过程：</p><br>
+<p></p><br>
+<p>@mixin adjust-location($x, $y) {</p><br>
+  <p>@if unitless($x) {</p><br>
+    <p>@error "$x may not be unitless, was #{$x}.";</p><br>
+  <p>}</p><br>
+  <p>@if unitless($y) {</p><br>
+    <p>@error "$y may not be unitless, was #{$y}.";</p><br>
+  <p>}</p><br>
+  <p>position: relative; left: $x; top: $y;</p><br>
+<p>}</p><br>
+<p>控制指令和逻辑语句</p><br>
+<p></p><br>
+<p>@if</p><br>
+<p></p><br>
+<p>@if 指令用于构成条件判断，如果判断结果不是 false 或者 null，就执行条件内的逻辑操作：</p><br>
+<p></p><br>
+<p>p {</p><br>
+  <p>@if 1 + 1 == 2 { border: 1px solid;  }</p><br>
+  <p>@if 5 < 3      { border: 2px dotted; }</p><br>
+  <p>@if null       { border: 3px double; }</p><br>
+<p>}</p><br>
+<p>生成的 CSS：</p><br>
+<p></p><br>
+<p>p {</p><br>
+  <p>border: 1px solid; </p><br>
+<p>}</p><br>
+<p>对于复杂的条件判断，可以使用 @if ... @else if ... @else 指令：</p><br>
+<p></p><br>
+<p>$type: monster;</p><br>
+<p>p {</p><br>
+  <p>@if $type == ocean {</p><br>
+    <p>color: blue;</p><br>
+  <p>} @else if $type == matador {</p><br>
+    <p>color: red;</p><br>
+  <p>} @else if $type == monster {</p><br>
+    <p>color: green;</p><br>
+  <p>} @else {</p><br>
+    <p>color: black;</p><br>
+  <p>}</p><br>
+<p>}</p><br>
+<p>生成的 CSS：</p><br>
+<p></p><br>
+<p>p {</p><br>
+  <p>color: green; </p><br>
+<p>}</p><br>
+<p>@for</p><br>
+<p></p><br>
+<p>@for ... from ... through ... 用来执行循环语句：</p><br>
+<p></p><br>
+<p>@for $i from 1 through 3 {</p><br>
+  <p>.item-#{$i} { width: 2em * $i; }</p><br>
+<p>}</p><br>
+<p>生成的 CSS：</p><br>
+<p></p><br>
+<p>.item-1 {</p><br>
+  <p>width: 2em; </p><br>
+<p>}</p><br>
+<p>.item-2 {</p><br>
+  <p>width: 4em; </p><br>
+<p>}</p><br>
+<p>.item-3 {</p><br>
+  <p>width: 6em; </p><br>
+<p>}</p><br>
+<p>@each</p><br>
+<p></p><br>
+<p>@each 指令主要用来遍历列表或者 map：</p><br>
+<p></p><br>
+<p>@each $animal in (puma sea-slug egret salamander) {</p><br>
+  <p>.#{$animal}-icon {</p><br>
+    <p>background-image: url('/images/#{$animal}.png');</p><br>
+  <p>}</p><br>
+<p>}</p><br>
+<p>生成的 CSS：</p><br>
+<p></p><br>
+<p>.puma-icon {</p><br>
+  <p>background-image: url('/images/puma.png'); </p><br>
+<p>}</p><br>
+<p>.sea-slug-icon {</p><br>
+  <p>background-image: url('/images/sea-slug.png'); </p><br>
+<p>}</p><br>
+<p>.egret-icon {</p><br>
+  <p>background-image: url('/images/egret.png'); </p><br>
+<p>}</p><br>
+<p>.salamander-icon {</p><br>
+  <p>background-image: url('/images/salamander.png'); </p><br>
+<p>}</p><br>
+<p>多维列表的遍历：</p><br>
+<p></p><br>
+<p>@each $animal, $color, $cursor in (puma, black, default),</p><br>
+                                  <p>(sea-slug, blue, pointer),</p><br>
+                                  <p>(egret, white, move) {</p><br>
+  <p>.#{$animal}-icon {</p><br>
+    <p>background-image: url('/images/#{$animal}.png');</p><br>
+    <p>border: 2px solid $color;</p><br>
+    <p>cursor: $cursor;</p><br>
+  <p>}</p><br>
+<p>}</p><br>
+<p>生成的 CSS：</p><br>
+<p></p><br>
+<p>.puma-icon {</p><br>
+  <p>background-image: url('/images/puma.png');</p><br>
+  <p>border: 2px solid black;</p><br>
+  <p>cursor: default; }</p><br>
+<p>.sea-slug-icon {</p><br>
+  <p>background-image: url('/images/sea-slug.png');</p><br>
+  <p>border: 2px solid blue;</p><br>
+  <p>cursor: pointer; }</p><br>
+<p>.egret-icon {</p><br>
+  <p>background-image: url('/images/egret.png');</p><br>
+  <p>border: 2px solid white;</p><br>
+  <p>cursor: move; }</p><br>
+<p>遍历 map：</p><br>
+<p></p><br>
+<p>@each $header, $size in (h1: 2em, h2: 1.5em, h3: 1.2em) {</p><br>
+  <p>#{$header} {</p><br>
+    <p>font-size: $size;</p><br>
+  <p>}</p><br>
+<p>}</p><br>
+<p>生成的 CSS：</p><br>
+<p></p><br>
+<p>h1 {</p><br>
+  <p>font-size: 2em; </p><br>
+<p>}</p><br>
+<p>h2 {</p><br>
+  <p>font-size: 1.5em; </p><br>
+<p>}</p><br>
+<p>h3 {</p><br>
+  <p>font-size: 1.2em; </p><br>
+<p>}</p><br>
+<p>@while</p><br>
+<p></p><br>
+<p>@while 指令是另一种形式的循环：</p><br>
+<p></p><br>
+<p>$i: 6;</p><br>
+<p>@while $i > 0 {</p><br>
+  <p>.item-#{$i} { width: 2em * $i; }</p><br>
+  <p>$i: $i - 2;</p><br>
+<p>}</p><br>
+<p>生成的 CSS：</p><br>
+<p></p><br>
+<p>.item-6 {</p><br>
+  <p>width: 12em; </p><br>
+<p>}</p><br>
+<p>.item-4 {</p><br>
+  <p>width: 8em; </p><br>
+<p>}</p><br>
+<p>.item-2 {</p><br>
+  <p>width: 4em; </p><br>
+<p>}</p><br>
+<p>混合宏</p><br>
+<p></p><br>
+<p>混合宏是 Sass 中代码片段得以复用的强大基础：</p><br>
+<p></p><br>
+<p>// 定义一个混合宏</p><br>
+<p>@mixin clearfix {</p><br>
+  <p>display: inline-block;</p><br>
+  <p>&:after {</p><br>
+    <p>content: ".";</p><br>
+    <p>display: block;</p><br>
+    <p>height: 0;</p><br>
+    <p>clear: both;</p><br>
+    <p>visibility: hidden;</p><br>
+  <p>}</p><br>
+  <p>* html & { height: 1px }</p><br>
+<p>}</p><br>
+<p></p><br>
+<p>// 调用一个混合宏</p><br>
+<p>.float {</p><br>
+  <p>@include clearfix;</p><br>
+<p>}</p><br>
+<p>生成的 CSS：</p><br>
+<p></p><br>
+<p>.float {</p><br>
+  <p>display: inline-block;</p><br>
+<p>}</p><br>
+<p>.float:after {</p><br>
+  <p>content: ".";</p><br>
+  <p>display: block;</p><br>
+  <p>height: 0;</p><br>
+  <p>clear: both;</p><br>
+  <p>visibility: hidden;</p><br>
+<p>}</p><br>
+<p>* html .float {</p><br>
+  <p>height: 1px;</p><br>
+<p>}</p><br>
+<p>混合宏之中可以包含其他的混合宏：</p><br>
+<p></p><br>
+<p>@mixin compound {</p><br>
+  <p>@include highlighted-background;</p><br>
+  <p>@include header-text;</p><br>
+<p>}</p><br>
+<p>混合宏下的参数</p><br>
+<p></p><br>
+<p>Sass 下的混合宏可以使用多种参数：默认值参数、关键字参数、不定量参数……</p><br>
+<p></p><br>
+<p>普通参数：</p><br>
+<p></p><br>
+<p>@mixin sexy-border($color, $width) {</p><br>
+  <p>border: {</p><br>
+    <p>color: $color;</p><br>
+    <p>width: $width;</p><br>
+    <p>style: dashed;</p><br>
+  <p>}</p><br>
+<p>}</p><br>
+<p>p { @include sexy-border(blue, 1in); }</p><br>
+<p>生成的 CSS：</p><br>
+<p></p><br>
+<p>p {</p><br>
+  <p>border-color: blue;</p><br>
+  <p>border-width: 1in;</p><br>
+  <p>border-style: dashed; </p><br>
+<p>}</p><br>
+<p>默认参数：</p><br>
+<p></p><br>
+<p>@mixin sexy-border($color, $width: 1in) {</p><br>
+  <p>border: {</p><br>
+    <p>color: $color;</p><br>
+    <p>width: $width;</p><br>
+    <p>style: dashed;</p><br>
+  <p>}</p><br>
+<p>}</p><br>
+<p>p { @include sexy-border(blue); }</p><br>
+<p>h1 { @include sexy-border(blue, 2in); }</p><br>
+<p>生成的 CSS：</p><br>
+<p></p><br>
+<p>p {</p><br>
+  <p>border-color: blue;</p><br>
+  <p>border-width: 1in;</p><br>
+  <p>border-style: dashed; </p><br>
+<p>}</p><br>
+<p></p><br>
+<p>h1 {</p><br>
+  <p>border-color: blue;</p><br>
+  <p>border-width: 2in;</p><br>
+  <p>border-style: dashed; </p><br>
+<p>}</p><br>
+<p>关键字参数：</p><br>
+<p></p><br>
+<p>@mixin sexy-border($color: red, $width: 1in) {</p><br>
+  <p>border: {</p><br>
+    <p>color: $color;</p><br>
+    <p>width: $width;</p><br>
+    <p>style: dashed;</p><br>
+  <p>}</p><br>
+<p>}</p><br>
+<p>p { @include sexy-border($width: 2in); }</p><br>
+<p>生成的 CSS：</p><br>
+<p></p><br>
+<p>p {</p><br>
+  <p>border-color: red;</p><br>
+  <p>border-width: 2in;</p><br>
+  <p>border-style: dashed;</p><br>
+<p>}</p><br>
+<p>不定量参数：</p><br>
+<p></p><br>
+<p>@mixin box-shadow($shadows...) {</p><br>
+  <p>-moz-box-shadow: $shadows;</p><br>
+  <p>-webkit-box-shadow: $shadows;</p><br>
+  <p>box-shadow: $shadows;</p><br>
+<p>}</p><br>
+<p></p><br>
+<p>.shadows {</p><br>
+  <p>@include box-shadow(0px 4px 5px #666, 2px 6px 10px #999);</p><br>
+<p>}</p><br>
+<p>生成的 CSS：</p><br>
+<p></p><br>
+<p>.shadows {</p><br>
+  <p>-moz-box-shadow: 0px 4px 5px #666, 2px 6px 10px #999;</p><br>
+  <p>-webkit-box-shadow: 0px 4px 5px #666, 2px 6px 10px #999;</p><br>
+  <p>box-shadow: 0px 4px 5px #666, 2px 6px 10px #999;</p><br>
+<p>}</p><br>
+<p>另一种不定量参数的写法：</p><br>
+<p></p><br>
+<p>@mixin colors($text, $background, $border) {</p><br>
+  <p>color: $text;</p><br>
+  <p>background-color: $background;</p><br>
+  <p>border-color: $border;</p><br>
+<p>}</p><br>
+<p></p><br>
+<p>$values: #ff0000, #00ff00, #0000ff;</p><br>
+<p>.primary {</p><br>
+  <p>@include colors($values...);</p><br>
+<p>}</p><br>
+<p></p><br>
+<p>$value-map: (text: #00ff00, background: #0000ff, border: #ff0000);</p><br>
+<p>.secondary {</p><br>
+  <p>@include colors($value-map...);</p><br>
+<p>}</p><br>
+<p>生成的 CSS：</p><br>
+<p></p><br>
+<p>.primary {</p><br>
+  <p>color: #ff0000;</p><br>
+  <p>background-color: #00ff00;</p><br>
+  <p>border-color: #0000ff;</p><br>
+<p>}</p><br>
+<p></p><br>
+<p>.secondary {</p><br>
+  <p>color: #00ff00;</p><br>
+  <p>background-color: #0000ff;</p><br>
+  <p>border-color: #ff0000;</p><br>
+<p>}</p><br>
+<p>混合宏中的 @content</p><br>
+<p></p><br>
+<p>@content 在混合宏中算是一种插值指令，类似占位符。当调用这段混合宏并附加规则时，附加的规则就会替代该指令输出到 CSS 中：</p><br>
+<p></p><br>
+<p>@mixin apply-to-ie6-only {</p><br>
+  <p>* html {</p><br>
+    <p>@content;</p><br>
+  <p>}</p><br>
+<p>}</p><br>
+<p>@include apply-to-ie6-only {</p><br>
+  <p>#logo {</p><br>
+    <p>background-image: url(/logo.gif);</p><br>
+  <p>}</p><br>
+<p>}</p><br>
+<p>生成的 CSS：</p><br>
+<p></p><br>
+<p>* html #logo {</p><br>
+  <p>background-image: url(/logo.gif);</p><br>
+<p>}</p><br>
+<p>函数指令</p><br>
+<p></p><br>
+<p>Sass 提供了 @function 和 @return 两个指令用来创建函数和返回函数值。在函数中，同样适用多种参数类型：</p><br>
+<p></p><br>
+<p>$grid-width: 40px;</p><br>
+<p>$gutter-width: 10px;</p><br>
+<p></p><br>
+<p>@function grid-width($n) {</p><br>
+  <p>@return $n * $grid-width + ($n - 1) * $gutter-width;</p><br>
+<p>}</p><br>
+<p></p><br>
+<p>#sidebar { width: grid-width(5); }</p><br>
+<p>生成的 CSS：</p><br>
+<p></p><br>
+<p>#sidebar {</p><br>
+  <p>width: 240px; </p><br>
+<p>}</p><br>
+
+</body>
+</html>
