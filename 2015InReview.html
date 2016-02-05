@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="author" content="Sebastian McKenzie">
+    <meta name="description" content="">
+    <title>~2015 in review</title>
+    <link rel="stylesheet" href="css/global.css" media="all">
+</head>
+<body>
+<a href="https://medium.com/@sebmck/2015-in-review-51ac7035e272#.tiuvco8wo">the link of articles</a><br>
+
+<pre>
+~2015 in review
+This started off as a generic year in review but as I was writing it became a lot more personal. This is my story of how I dealt with going from high school to moving to another country and working in big tech in a little over a year.
+All throughout my childhood I’ve had an interest in computers and the web. When I was eight I published my first website, when I was eleven I was causing mischief on a forum for a kids MMO, and at fifteen I developed a Tumblr-like service with a friend. It was no surprise to my family or school teachers when I said that I wanted to get a job in software development. I didn’t know quite how I’d go about it but I certainly knew the direction that I wanted to pursue.
+
+Screenshot of the front page of Amuzor
+On September 28th 2014 I pushed my first commit to GitHub for a JavaScript library I was working on while studying for my high school exams. I didn’t really think much of it, I’ve always had a project I’ve been working on during class on my laptop instead of paying attention and this was just one of many. It started off as purely a learning exercise.
+I’d been writing JavaScript for a few years at that point and no matter how much of it I wrote I never really grasped the higher levels concepts that I was using. How does the language grammar work? How do different languages features interoperate? How does the computer parse and understand my code? These were all questions that I didn’t know the answer to. My ignorance finally got the best of me and I decided to dig in and discover how exactly the pieces fit together.
+I learnt of this new version of JavaScript called ES6 that was in the process of being drafted. “Woah”, I thought. I’d had experience with quite a few scripting languages prior to getting into JavaScript and there was certainly a few bells and whistles that I missed. How could I use this? No browser supported it and it was going to be years before I could reliably use it.
+Previously I’d heard of this JavaScript “converter” called Traceur by a couple of Google engineers that converted something called JavaScript next. At the time it was way over my head but while reading about ES6 I had an epiphany and it was extremely obvious. I decided to look into it again and it was exactly what I dreamed of! I could convert this new version of JavaScript to code that could run today! Brilliant!
+How could this possibly work? I tried out the online REPL and surely enough it did exactly what it said on the tin. The code it generated was super intimidating though, this didn’t look at all like code I’d write myself (I would later on discover that there are obvious reasons for this).
+I still didn’t quite understand how it worked. I’ve always been super not-invented-here and wrote most of my libraries from scratch because I just loved building stuff and had an abundant amount of free time in high school to experiment and learn.
+Over the last year I’d acquired a very naive (but beneficial) approach to problems where I’d just jump in head first. I was battling crippling social anxiety to the point where I’d developed an eating disorder due to body issues. I wasn’t happy with how I looked and failed every single oral presentation in class because I was too scared to get up and talk. I’ve always hated being restricted, not being able to do what I want so having this glooming cloud of self hate was not very pleasant.
+Slowly but surely I worked up the confidence to fix it. I ran for and won school captain which gave me plenty of opportunities to do public speaking. My voice would still shake when I would give presentations but at least I could actually perform them. I came out of it much more resilient and became very comfortable with taking big risks, this would later turn out to be very useful.
+I decided to jump head first into writing my own JavaScript compiler. I assembled a bunch of awesome existing libraries such as esprima, estraverse and escodegen and got at it. I wrote a set of very rudimentary transforms based on reading blog posts about how specific new language features worked.
+My technical vocab was extremely limited so jumping into reading the specification was pretty much like a toddler trying to understand a book on nuclear physics. I pushed it to GitHub, didn’t really promote it much but then one day I woke up to a few issues. Woah, a bug report! Somebody is actually trying to use it! I promptly fixed the bug, pushed out a new release and continued on.
+I wrote some very simple documentation, a website and an online REPL like the one I found on the Traceur website. This turned out to be essential to adoption. It was super easy to setup and install because the documentation and setup process was so simple. Suddenly the amount of users grew and grew, the philosophy that I set for the project resonated with a lot of people and 6to5 rode the ES6 hype train right to the top.
+Babel/6to5 npm download graph
+Sometimes I’d fix bugs within minutes of the bug reports being opened because I’d just be chilling on my computer watching TV and with nothing really to do. People were using my stuff, and they liked it! By this point I was basically working on it full time. I was still going to classes but I’d moreorless just sit in the back and program, minimising Sublime Text and opening Microsoft Word when the teacher would walk past.
+It was November at this stage and was meant to be sitting my final year exams which determines what university you’ll go to. For unrelated reasons I wasn’t able to sit my exams which meant that I couldn’t go to university since I didn’t have an ATAR score which is awarded when you complete them. I could have likely battled with my school to resit them or get an exception but I didn’t really care. I hated school anyway and the thought of more of it made me queezy.
+Starting my career
+I was 17, had finished high school and was basically a free spirit. I really wanted to start my career, I’d been waiting my entire life for this! My hometown is in regional Australia. Not super small but not super big, the only jobs in tech were crummy ones at web design agencies doing basic jQuery and WordPress. Not that I considered myself above that, I did my fair share of freelance work for local football clubs maintaining their websites.
+I just wanted something more. But how do I get a job? Where do I get a job? There was no way I could get what I want in my hometown. I have no qualifications and the only proof of my abilities is my existing open source portfolio. I hoped my open source work was enough for an employer to give me a chance so put together a resume and started my search.
+I was 600km from Sydney and 300km from Melbourne. I figured the only chances of finding the kind of job I wanted would be in the big cities. All up I applied for over 30 junior developer positions. I got a few responses and had a few Skype interviews.
+Nobody was really interested. I don’t particularly blame them. A 17 year old straight out of high school, who’d want to hire that? I just wanted someone to believe in me and take a chance. I realised my current process of going through job websites was not going to work. I was already applying for very enterprisey jobs which I wasn’t particularly happy with but I didn’t particularly mind, I just wanted to get my foot in the door somewhere.
+Example of two of the junior developer positions I applied for
+I ended up ruling out Melbourne as my city of choice and decided that Sydney was the city that I wanted to move to. I looked at the local JavaScript community and saw the largest meetup was SydJS, I was just casually browsing the sponsors of the meetup and one of them caught my eye. Thinkmill.
+Thinkmill were a full Node/JavaScript agency and consulting firm based entirely in Sydney. They had a big open source presence, loved JavaScript and I already had experience with a lot of the tech that they used. It was like a match made in heaven.
+It was late at night and I decided to test my luck by cold emailing them:
+Hey, I’m wondering if you had any positions available or knew of any Sydney Node.js or JavaScript companies that would be hiring?
+
+I recently finished high school and I’m eager to get out into the workplace. I know i have what it takes to fulfil a development position and have heaps of code to back me up.
+
+I’ve created 6to5 which is an ES6 to ES5 transpiler: https://github.com/sebmck/6to5 It’s been extremely successful and receives widespread use and rivals Traceur by Google.
+
+In early 2013 I launched a website (which sadly had to be closed down), Amuzor, a content aggregator, that at it’s peak received over 10k views a day.
+
+My biggest personal project (which still remains unfinished unfortunately) is nyx (https://github.com/nyx-platform/nyx). It’s a full-stack framework/platform for Node that focussed on modularity. You’d compose applications out of modules and they’d all work seamlessly together, regardless of your combination.
+
+Attached is also my resume.
+
+Thanks!
+Within a few hours I received a response from Jed Watson one of the founders:
+Hey Sebastian,
+
+Thanks for getting in touch, I’m keen to have a chat.
+
+We don’t specifically have any positions available but it looks like we’ve got a lot of common ground. Nice work with 6to5 :)
+
+Not sure how much you know about Thinkmill, but we’ve got a strong combo of agency-style commercial work, startup projects and open source / framework development going on, so we’re potentially a good fit.
+
+Otherwise, we know a lot of people in Sydney who work with Node.js and Javascript, and I’d be happy to help you find the right place.
+
+My number’s XXXX XXX XXX, let me know when you’re good for a call.
+
+Cheers,
+Jed.
+We exchanged a few back and forth emails and at almost 1am in the morning we were talking on the phone about working together. The next day I was invited to come to Sydney to spend the day working with them and see how things went. If we liked each other than I could possibly have a job, otherwise they were more than willing to help me find a local company with their connections.
+It was 7 hours to Sydney by train, long trip but I didn’t care, it was worth it. I went up, spent the day working with them and at the end of the day I was offered a job. I accepted before they even had the chance to give me all the details such as compensation. I was absolutely ecstatic. For whatever reason they decided to take a chance and take me on.
+Map of directions from Wodonga to Sydney
+I moved to Sydney on December 1st 2014. It was my first job. I was enthusiastic and raring to go, I wasn’t going to let them down. Despite my age and lack of work experience I was treated with a lot of respect from everyone I worked with, I couldn’t have asked for anything more.
+Second thoughts
+But suffice to say, agency work got the best of me. It was very hard for me to work up the motivation to work. There was a lot marketing related work and I found it very hard to be passionate about working on it.
+Work wasn’t my only worry. I’d moved to a new city where I had no family and no friends. I felt extremely isolated and it started becoming difficult to get up every day. The only solace I had was going home every night and working on my baby project, 6to5. I was very fortunate to also be given time at work to work on 6to5 and other Thinkmill open source projects which was by far the most enjoyable part.
+While in Sydney I gave my first tech talk on 6to5, I walked through what it was, how to use it and why I made it, it was awesome practice for things to come.
+I felt super guilty. I was so privileged to have been offered this amazing opportunity and was working with some incredible people. I confided with James Kyle who had for a few months been working closely with me on 6to5. He suggested a job at his employer CloudFlare, it sounded amazing, I could write software and libraries that would run on millions of websites that covered a very sizeable portion of the internet.
+Map of all the CloudFlare points of presence around the world
+There was a problem though, I’d have to move to San Francisco or London. I’d only been working at Thinkmill for 3 months and I was already considering quitting and moving to an entirely different country.
+I didn’t even have a passport, I’d never left Australia! I wasn’t even 18 yet and I’m considering moving to another country? It was batshit crazy. I thought it through a lot. What did I want out of a career? Is this a better opportunity?
+I eventually settled that it’s what I wanted. I had no personal commitments holding me to Australia. I’ve always craved personal freedom and what a better way to use it than to move to another country. It was an epic opportunity, I would have access to a lot of resources and would have a lot of freedom to mostly work on whatever I wanted.
+The home computer I destroyed RIP
+I remember the day I decided this is what I wanted. I called my Mum and said “I think I’m going to quit my job and move to another country”. My Mum was super supportive, she always has been. She bought me a laptop with Windows 98 on it for my birthday when I was younger and allowed me to mess around with the family computer which I eventually destroyed when attempting to install an extra sound card.
+Moving to the US was immediately ruled out. Immigration was way too much of an issue. I didn’t qualify for any of the standard work visas, not even the ones with a lottery as I didn’t have a degree. The UK was far more hospitable, especially to someone from a country in the Commonwealth.
+I went through an extensive round of interviews with CloudFlare before I was finally offered a job. It was surreal. I was agreeing to move to a country I’d never even been to that was literally on the other side of the world.
+Around this time 6to5 was exploding in popularity. We put together a users page where companies could list themselves as using 6to5. I was fucking blown away. Companies I could only dream of were using my software. My talk proposals for JSConf US and React Europe were also accepted. It was extremely overwhelming to say the least.
+Excerpt from babeljs.io/users listing 12 companies who use Babel
+The move
+So I quit my job at Thinkmill and shortly after turning 18 I left for the US in April 2015 to spend two weeks of orientation at the CloudFlare HQ in San Francisco before continuing on to my new home in London.
+Map showing route from Wodonga to London
+This was my first experience outside of Australia, I’d only ever had my first plane trip a month prior when I went for a visit back home. It was super intimidating, I had no idea what I was getting myself into. The first few days in the US I could only help but smile whenever I heard an American accent, the only American voices I’d heard prior were on the TV or in movies.
+I learnt that a large part of my vocabulary is actually Australian slang and discovered that I actually slur most of the time when I’m speaking… No longer could I suggest “dinking my mate on my BMX down to the fish and chippy to get a battered sav”.
+Arriving in London I was given a temporary apartment for a month while I looked for a place of my own. I had to open a bank account, deal with leases, tax, getting internet, water and electricity, all of the mundane chores of adult life.
+My impressions at first were very weird. The UK felt oddly familiar but very different at the same time. It was the small things that I found particularly weird like how two litre bottles were shaped differently or the surprisingly lack of insects and birds.
+The thing that really threw me a curveball was when I discovered that my favourite food, Chinese honey chicken, is actually Australian Chinese and unavailable outside Australia. I only bring this up as if you live in London and know where to get this please for the love of god tell me and I will be forever in your service. I’ve attempted to make it myself over five times already and every single time it’s been a failure and I’ve just produced undercooked chicken and a putrid yellow sludge. I wasn’t born to be a chef apparently.
+Honey chicken, the food of gods
+Just like at Thinkmill I was treated with a lot of respect despite my age and experience which surprised me a lot when compared to the way I was treated socially in tech. There were times were I’d get snarky comments on my age from meetup organisers which made me feel extremely uncomfortable.
+This unfortunately became a trend. I don’t really go to local tech meetups anymore because I don’t feel like I fit in both due to age demographic and the age related comments I get. Usually whenever my age was bought up it was met with shock and awe.
+I hated it. I don’t need to be told facts about myself. It didn’t make me feel special or unique, it just made me feel very different and abnormal. Once I had someone harass me for an entire meetup about my age and I ended up going home feeling like shit and crying myself to sleep.
+My age was particularly of concern whenever I’d go to the US for work or conferences. The tech industry has a strong drinking culture and not being able to go into bars is very socially isolating. Whenever I go to the US I feel like a child and even get asked at customs why I’m travelling alone.
+If you’re running a conference and hold an event at a licensed bar who disallow people under 21 then you’re excluding an already socially disadvantaged age group.
+I hate telling people my age and I especially hate telling them combined with where I work. Two UK border control officers once debated about whether or not I was a “whiz kid” and despite being tragically hilarious was just extremely condescending.
+<img src="2015InReview/ir03.jpeg" alt="">
+On stage at BrazilJS 2015
+I would usually get similar treatment at tech conferences although to a far lesser extent. It was incredibly difficult to relate to anyone and I could only help but feel like I was invited to give a talk because of my age as a novelty or as pity. It’s extremely difficult feeling valued and normal when you’re surrounded by people of a predominately different demographic than you.
+Working at CloudFlare was amazing. Working with so many smart people was super intimidating and humbling. What I was working on was super enjoyable but I couldn’t help but I still couldn’t beat that feeling of dissatisfaction.
+<img src="2015InReview/ir02.jpeg" alt="">
+Making a CloudFlare logo out of lego
+Through a lot of introspection and reflection I realised what I was really passionate about was developer tooling and web standards. Unfortunately there wasn’t really a place for this at CloudFlare as they neither utilise JavaScript enough nor were at the size to have a dedicated team for it. So far whenever I’ve identified a problem whether it’s with my life, relationships or projects I’ll try and fix it to the best of my abilities and this situation was no different.
+New job and burn out
+I decided to go back to the thing that I loved to work on and that was 6to5 (Now called Babel). I wanted to work on it and related projects full time but very few companies have those kinds of resources.
+One company however came to mind, Facebook. In fact Facebook were a heavy user of Babel and have a strong public commitment to JavaScript and open source. It became extremely clear that if this was what I wanted to pursue then Facebook was the company to work for.
+I left CloudFlare and joined Facebook in July 2015 where I continue working to this day. I have an awesome manager, coworkers and office, I couldn’t really ask for more. I was super passionate about what I was working on which was insanely important to me.
+However, over time as I crunched harder and harder I became to fall out of love with my personal project. I became very demotivated and almost got the point where I shuddered whenever I thought about it. The personal commitment and open source pressure got to me.
+I saw the best and the worst of the open source community and witnessed both kindness and entitlement. There’s the saying “one bad apple spoils the bunch” but in this case it’s more like “several bad apples spoils the bunch”. Open source users expect A LOT and are very vocal when things aren’t exactly how they would have them.
+<img src="2015InReview/ir01.png" alt="">
+An actual issue comment I received
+Countless times I’d have people shit on my work based on FUD. It’s incredibly demotivating. Referring to someones work as “shit” and calling open source maintainers idiots is incredibly disparaging and not productive.
+There’s a lot of criticism over “asshole” open source maintainers who are very blunt and assertive. I don’t really blame them. Dealing with open source is a very emotionally heavy task and one of the ways in which I and many others deal with it is by closing up and treating it like a manufacturing line where there’s no bullshit and you get things done as fast as possible.
+The open source community treats maintainers as a commodity, I don’t want to spend every waking moment thinking about and working on open source. Sometimes I just want to chill out, watch the TV and turn off my brain for an afternoon instead of answering questions. I’ve started completely ignoring GitHub emails because I would get mentioned in random issues and even in random commit messages.
+I can’t filter the noise. This is compounded with people thinking it’s okay to message maintainers privately on Twitter, Slack and personal email to ask for help. I’m sorry but maintainers do not have infinite time and attention to provide support over every communication channel possible. When a project has obvious support channels such as a forum or StackOverflow tag it’s selfish to contact the authors directly.
+I believe a lot of these issues are confounded by GitHub. It’s incredibly cheap to open issues but it’s very expensive for maintainers to deal with them. Many users don’t read the README or CONTRIBUTING files which becomes problematic when you have to constantly filter and close issues when people treat GitHub like a support forum. Users treat the closure of issues as something very personal when it’s literally just a button click.
+My GitHub contribution graph
+I started distancing myself from the project. Fixing less issues. Being less responsive. A weird thing happened though as I pulled myself further away from the project. Contributors came in and filled the gaps. Sometimes in order to get more freedom you have to give stuff away. I added a few active contributors publishing rights and made the local development environment much more friendly.
+The result was that the bus factor was increased and I could rest a little easier not feeling so pressured. I used to be very emotionally invested in Babel, now I don’t really care.
+I still intend to be a big part in Babel development but not bearing the brunt of the responsibility is fantastic and if you find yourself in a similar open source maintenance position then I’d encourage you to do the same.
+I’ve still got a lot to figure out but I’ve been told that most adults are only figuring things out as they go so I’m not too worried.
+2015 has been a wild ride. I left Australia, moved to another country, travelled over 200,000 kilometres (130,000 miles) to 8 countries, had 3 jobs, spoke at 5 conferences, 4 meetups and been a guest on 2 podcasts.
+I feel extremely privileged and grateful to have been given the opportunities that I have and hope in 2016 I can share and help others with the same. Thank you so much to all my friends, family and people who have helped me along the way. Here’s to an even better 2016. 🎉
+</pre>
+</body>
+</html>
